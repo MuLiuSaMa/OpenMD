@@ -1,0 +1,24 @@
+{
+  "app_title": "OpenMD 卸载程序",
+  "app_name": "OpenMD",
+  "app_description": "为现代玩家打造的游戏工具箱",
+
+  "confirm_title": "卸载 OpenMD",
+  "confirm_desc": "您确定要卸载OpenMD吗？此操作将删除所有程序文件、快捷方式和系统注册信息。",
+  "confirm_warning": "此操作不可恢复，请确保您已备份重要数据。",
+  "confirm_location": "安装位置：",
+  "confirm_btn": "开始卸载",
+
+  "uninstall_title": "正在卸载",
+  "uninstall_desc": "正在卸载OpenMD，请稍候...",
+  "uninstall_deleting": "正在删除程序文件...",
+  "uninstall_shortcuts": "正在删除快捷方式...",
+  "uninstall_registry": "正在清理注册表...",
+  "uninstall_done": "卸载完成！",
+
+  "complete_title": "卸载完成",
+  "complete_desc": "OpenMD已从您的计算机中完全移除。",
+  "complete_btn": "完成",
+
+  "btn_cancel": "取消"
+}

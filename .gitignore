@@ -1,0 +1,62 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies & build output
+node_modules
+dist
+dist-ssr
+*.local
+
+# Rust / Tauri
+src-tauri/target
+src-tauri/gen/schemas
+installer/src-tauri/gen/schemas
+uninstaller/src-tauri/gen/schemas
+
+# Installer build artifacts
+installer/node_modules
+installer/dist
+installer/src-tauri/target
+installer/src-tauri/payload.zip
+installer/*.exe
+installer/*.zip
+
+# Uninstaller build artifacts
+uninstaller/node_modules
+uninstaller/dist
+uninstaller/src-tauri/target
+uninstaller/*.exe
+
+# External reference projects
+mdhero-main
+
+# IDE & tool workspaces
+.trae
+.zcode
+.vscode/*
+!.vscode/extensions.json
+.idea
+.zcodeignore
+
+# Design source assets (runtime copies live in public/)
+/file.png
+/group1.png
+/alipay.webp
+/wechat.png
+/OpenMD.png
+/OpenMD-w.png
+/OpenMD-白.png
+/OpenMD-黑.png
+/MiSansVF.ttf
+/sample.md
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini

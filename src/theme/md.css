@@ -1,0 +1,603 @@
+/* OpenMD — Markdown 正文排版 + 代码高亮配色(Chakra 没有 typography 插件,这里自写)
+   暗色选择器同时覆盖 .dark 与 [data-theme="dark"],与 Chakra v3 的 color mode 兼容。 */
+
+/* 通用工具类 */
+.animate-spin {
+  animation: md-spin 1s linear infinite;
+}
+@keyframes md-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* MiSans 可变字体:全局界面与正文共用,weight 100–900 由 font-weight 驱动 */
+@font-face {
+  font-family: "MiSans";
+  src: url("/fonts/MiSansVF.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+.md-body {
+  color: #1f2328;
+  font-family: "MiSans", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-size: var(--md-font-size, 17px);
+  line-height: 1.75;
+  word-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 标题 ---------- */
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin: 1.6em 0 0.6em;
+  scroll-margin-top: 16px;
+}
+.md-body h1:first-child,
+.md-body h2:first-child,
+.md-body h3:first-child {
+  margin-top: 0.2em;
+}
+.md-body h1 {
+  font-size: 1.85em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #e4e7eb;
+}
+.md-body h2 {
+  font-size: 1.45em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid #edf0f3;
+}
+.md-body h3 { font-size: 1.22em; }
+.md-body h4 { font-size: 1.08em; }
+.md-body h5 { font-size: 1em; }
+.md-body h6 { font-size: 0.92em; color: #57606a; }
+
+/* ---------- 段落与文本 ---------- */
+.md-body p { margin: 0.9em 0; }
+.md-body strong { font-weight: 650; }
+.md-body small { font-size: 0.85em; }
+
+.md-body a {
+  color: #0969da;
+  text-decoration: none;
+}
+.md-body a:hover { text-decoration: underline; }
+
+.md-body mark {
+  background: #fff8c5;
+  color: inherit;
+  padding: 0.05em 0.15em;
+  border-radius: 3px;
+}
+
+/* ---------- 列表 ---------- */
+.md-body ul,
+.md-body ol {
+  margin: 0.7em 0;
+  padding-left: 1.8em;
+}
+.md-body li { margin: 0.28em 0; }
+.md-body li > p { margin: 0.4em 0; }
+.md-body li::marker { color: #8c959f; }
+
+/* 任务列表 */
+.md-body .task-list-item {
+  list-style: none;
+  margin-left: -1.55em;
+}
+.md-body .task-list-item input[type="checkbox"] {
+  margin-right: 0.55em;
+  accent-color: #0969da;
+  vertical-align: middle;
+}
+
+/* ---------- 引用 ---------- */
+.md-body blockquote {
+  margin: 1em 0;
+  padding: 0.1em 1em;
+  border-left: 3px solid #d0d7de;
+  color: #57606a;
+}
+.md-body blockquote > :first-child { margin-top: 0.2em; }
+.md-body blockquote > :last-child { margin-bottom: 0.2em; }
+
+/* ---------- 代码 ---------- */
+.md-body code {
+  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 0.86em;
+}
+.md-body :not(pre) > code {
+  background: #f0f2f5;
+  padding: 0.18em 0.42em;
+  border-radius: 5px;
+  color: #1f2328;
+}
+
+.md-body pre {
+  position: relative;
+  margin: 1.1em 0;
+  padding: 1em 1.2em;
+  border-radius: 10px;
+  border: 1px solid #e4e7eb;
+  background: #f6f8fa;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+.md-body pre code {
+  font-size: 0.82em;
+  background: none;
+  padding: 0;
+  border: 0;
+  white-space: pre;
+}
+
+/* 复制按钮 */
+.md-body .code-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #57606a;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+.md-body pre:hover .code-copy-btn { opacity: 1; }
+.md-body .code-copy-btn:hover {
+  background: #ffffff;
+  color: #1f2328;
+}
+
+/* ---------- highlight.js 亮色(github 配色) ---------- */
+.md-body .hljs {
+  color: #24292e;
+  background: transparent;
+}
+.md-body .hljs-doctag,
+.md-body .hljs-keyword,
+.md-body .hljs-meta .hljs-keyword,
+.md-body .hljs-template-tag,
+.md-body .hljs-template-variable,
+.md-body .hljs-type,
+.md-body .hljs-variable.language_ {
+  color: #d73a49;
+}
+.md-body .hljs-title,
+.md-body .hljs-title.class_,
+.md-body .hljs-title.class_.inherited__,
+.md-body .hljs-title.function_ {
+  color: #6f42c1;
+}
+.md-body .hljs-attr,
+.md-body .hljs-attribute,
+.md-body .hljs-literal,
+.md-body .hljs-meta,
+.md-body .hljs-number,
+.md-body .hljs-operator,
+.md-body .hljs-selector-attr,
+.md-body .hljs-selector-class,
+.md-body .hljs-selector-id,
+.md-body .hljs-variable {
+  color: #005cc5;
+}
+.md-body .hljs-meta .hljs-string,
+.md-body .hljs-regexp,
+.md-body .hljs-string {
+  color: #032f62;
+}
+.md-body .hljs-built_in,
+.md-body .hljs-symbol {
+  color: #e36209;
+}
+.md-body .hljs-code,
+.md-body .hljs-comment,
+.md-body .hljs-formula {
+  color: #6a737d;
+}
+.md-body .hljs-name,
+.md-body .hljs-quote,
+.md-body .hljs-selector-pseudo,
+.md-body .hljs-selector-tag {
+  color: #22863a;
+}
+.md-body .hljs-selector-pseudo { color: #6a737d; }
+.md-body .hljs-subst { color: #24292e; }
+.md-body .hljs-section {
+  color: #005cc5;
+  font-weight: 700;
+}
+.md-body .hljs-bullet { color: #735c0f; }
+.md-body .hljs-emphasis {
+  color: #24292e;
+  font-style: italic;
+}
+.md-body .hljs-strong {
+  color: #24292e;
+  font-weight: 700;
+}
+.md-body .hljs-addition {
+  color: #22863a;
+  background-color: #f0fff4;
+}
+.md-body .hljs-deletion {
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+
+/* ---------- 表格 ---------- */
+.md-body table {
+  border-collapse: collapse;
+  margin: 1.1em 0;
+  font-size: 0.92em;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid #d8dee4;
+  padding: 0.5em 0.9em;
+  text-align: start;
+}
+.md-body th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+/* ---------- 图片 / 分割线 ---------- */
+.md-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+.md-body hr {
+  border: none;
+  border-top: 1px solid #e4e7eb;
+  margin: 2.2em 0;
+}
+
+/* ---------- 链接 tooltip ---------- */
+.link-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 60;
+  max-width: 420px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: Consolas, monospace;
+  color: #57606a;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* =========================================================
+   暗色主题
+   ========================================================= */
+.dark .md-body,
+[data-theme="dark"] .md-body {
+  color: #d1d7de;
+}
+.dark .md-body h1,
+[data-theme="dark"] .md-body h1 {
+  border-bottom-color: #2d333b;
+}
+.dark .md-body h2,
+[data-theme="dark"] .md-body h2 {
+  border-bottom-color: #2d333b;
+}
+.dark .md-body h6,
+[data-theme="dark"] .md-body h6 {
+  color: #8b949e;
+}
+
+.dark .md-body a,
+[data-theme="dark"] .md-body a {
+  color: #4493f8;
+}
+.dark .md-body mark,
+[data-theme="dark"] .md-body mark {
+  background: #bb800944;
+  color: #e3b341;
+}
+
+.dark .md-body li::marker,
+[data-theme="dark"] .md-body li::marker {
+  color: #6e7681;
+}
+
+.dark .md-body blockquote,
+[data-theme="dark"] .md-body blockquote {
+  border-left-color: #3d444d;
+  color: #8b949e;
+}
+
+.dark .md-body :not(pre) > code,
+[data-theme="dark"] .md-body :not(pre) > code {
+  background: #2d333b;
+  color: #e6edf3;
+}
+
+.dark .md-body pre,
+[data-theme="dark"] .md-body pre {
+  border-color: #2d333b;
+  background: #161b22;
+}
+
+.dark .md-body .code-copy-btn,
+[data-theme="dark"] .md-body .code-copy-btn {
+  color: #8b949e;
+  background: rgba(33, 38, 45, 0.85);
+  border-color: #3d444d;
+}
+.dark .md-body .code-copy-btn:hover,
+[data-theme="dark"] .md-body .code-copy-btn:hover {
+  background: #2d333b;
+  color: #e6edf3;
+}
+
+/* highlight.js 暗色(github-dark 配色,全 token 覆盖) */
+.dark .md-body pre,
+[data-theme="dark"] .md-body pre {
+  color: #c9d1d9;
+}
+.dark .md-body .hljs,
+[data-theme="dark"] .md-body .hljs {
+  color: #c9d1d9;
+  background: transparent;
+}
+.dark .md-body .hljs-doctag,
+.dark .md-body .hljs-keyword,
+.dark .md-body .hljs-meta .hljs-keyword,
+.dark .md-body .hljs-template-tag,
+.dark .md-body .hljs-template-variable,
+.dark .md-body .hljs-type,
+.dark .md-body .hljs-variable.language_,
+[data-theme="dark"] .md-body .hljs-doctag,
+[data-theme="dark"] .md-body .hljs-keyword,
+[data-theme="dark"] .md-body .hljs-meta .hljs-keyword,
+[data-theme="dark"] .md-body .hljs-template-tag,
+[data-theme="dark"] .md-body .hljs-template-variable,
+[data-theme="dark"] .md-body .hljs-type,
+[data-theme="dark"] .md-body .hljs-variable.language_ {
+  color: #ff7b72;
+}
+.dark .md-body .hljs-title,
+.dark .md-body .hljs-title.class_,
+.dark .md-body .hljs-title.class_.inherited__,
+.dark .md-body .hljs-title.function_,
+[data-theme="dark"] .md-body .hljs-title,
+[data-theme="dark"] .md-body .hljs-title.class_,
+[data-theme="dark"] .md-body .hljs-title.class_.inherited__,
+[data-theme="dark"] .md-body .hljs-title.function_ {
+  color: #d2a8ff;
+}
+.dark .md-body .hljs-attr,
+.dark .md-body .hljs-attribute,
+.dark .md-body .hljs-literal,
+.dark .md-body .hljs-meta,
+.dark .md-body .hljs-number,
+.dark .md-body .hljs-operator,
+.dark .md-body .hljs-selector-attr,
+.dark .md-body .hljs-selector-class,
+.dark .md-body .hljs-selector-id,
+.dark .md-body .hljs-variable,
+[data-theme="dark"] .md-body .hljs-attr,
+[data-theme="dark"] .md-body .hljs-attribute,
+[data-theme="dark"] .md-body .hljs-literal,
+[data-theme="dark"] .md-body .hljs-meta,
+[data-theme="dark"] .md-body .hljs-number,
+[data-theme="dark"] .md-body .hljs-operator,
+[data-theme="dark"] .md-body .hljs-selector-attr,
+[data-theme="dark"] .md-body .hljs-selector-class,
+[data-theme="dark"] .md-body .hljs-selector-id,
+[data-theme="dark"] .md-body .hljs-variable {
+  color: #79c0ff;
+}
+.dark .md-body .hljs-meta .hljs-string,
+.dark .md-body .hljs-regexp,
+.dark .md-body .hljs-string,
+[data-theme="dark"] .md-body .hljs-meta .hljs-string,
+[data-theme="dark"] .md-body .hljs-regexp,
+[data-theme="dark"] .md-body .hljs-string {
+  color: #a5d6ff;
+}
+.dark .md-body .hljs-built_in,
+.dark .md-body .hljs-symbol,
+[data-theme="dark"] .md-body .hljs-built_in,
+[data-theme="dark"] .md-body .hljs-symbol {
+  color: #ffa657;
+}
+.dark .md-body .hljs-code,
+.dark .md-body .hljs-comment,
+.dark .md-body .hljs-formula,
+[data-theme="dark"] .md-body .hljs-code,
+[data-theme="dark"] .md-body .hljs-comment,
+[data-theme="dark"] .md-body .hljs-formula {
+  color: #8b949e;
+}
+.dark .md-body .hljs-name,
+.dark .md-body .hljs-quote,
+.dark .md-body .hljs-selector-pseudo,
+.dark .md-body .hljs-selector-tag,
+[data-theme="dark"] .md-body .hljs-name,
+[data-theme="dark"] .md-body .hljs-quote,
+[data-theme="dark"] .md-body .hljs-selector-pseudo,
+[data-theme="dark"] .md-body .hljs-selector-tag {
+  color: #7ee787;
+}
+.dark .md-body .hljs-subst,
+[data-theme="dark"] .md-body .hljs-subst {
+  color: #c9d1d9;
+}
+.dark .md-body .hljs-section,
+[data-theme="dark"] .md-body .hljs-section {
+  color: #58a6ff;
+  font-weight: 700;
+}
+.dark .md-body .hljs-bullet,
+[data-theme="dark"] .md-body .hljs-bullet {
+  color: #f2cc60;
+}
+.dark .md-body .hljs-emphasis,
+[data-theme="dark"] .md-body .hljs-emphasis {
+  color: #c9d1d9;
+  font-style: italic;
+}
+.dark .md-body .hljs-strong,
+[data-theme="dark"] .md-body .hljs-strong {
+  color: #c9d1d9;
+  font-weight: 700;
+}
+.dark .md-body .hljs-addition,
+[data-theme="dark"] .md-body .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+.dark .md-body .hljs-deletion,
+[data-theme="dark"] .md-body .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
+}
+
+.dark .md-body th,
+.dark .md-body td,
+[data-theme="dark"] .md-body th,
+[data-theme="dark"] .md-body td {
+  border-color: #3d444d;
+}
+.dark .md-body th,
+[data-theme="dark"] .md-body th {
+  background: #21262d;
+}
+
+.dark .md-body hr,
+[data-theme="dark"] .md-body hr {
+  border-top-color: #2d333b;
+}
+
+.dark .link-tooltip,
+[data-theme="dark"] .link-tooltip {
+  background: #21262d;
+  border-color: #3d444d;
+  color: #8b949e;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* =========================================================
+   悬浮式滚动条(配合 FloatingScrollbar 组件)
+   ========================================================= */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.floating-scrollbar {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: 4px;
+  width: 12px;
+  z-index: 30;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.floating-scrollbar.show {
+  opacity: 1;
+}
+.fs-hit {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+.fs-thumb {
+  position: absolute;
+  right: 3px;
+  width: 5px;
+  border-radius: 999px;
+  background: rgba(20, 24, 33, 0.3);
+  transition: background 0.2s, width 0.15s;
+  pointer-events: auto;
+}
+.fs-thumb:hover {
+  width: 8px;
+  background: rgba(20, 24, 33, 0.5);
+}
+.floating-scrollbar.show.dragging .fs-thumb {
+  width: 8px;
+  background: rgba(20, 24, 33, 0.55);
+}
+
+.dark .fs-thumb,
+[data-theme="dark"] .fs-thumb {
+  background: rgba(235, 240, 250, 0.28);
+}
+.dark .fs-thumb:hover,
+[data-theme="dark"] .fs-thumb:hover {
+  background: rgba(235, 240, 250, 0.5);
+}
+.dark .floating-scrollbar.show.dragging .fs-thumb,
+[data-theme="dark"] .floating-scrollbar.show.dragging .fs-thumb {
+  background: rgba(235, 240, 250, 0.55);
+}
+
+/* =========================================================
+   代码视图(原始 Markdown 源码,配合 TitleBar 预览/代码切换)
+   容器同时挂 .md-body 以复用 .md-body .hljs-* 亮/暗配色。
+   ========================================================= */
+.md-code-view {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 24px 32px 64px;
+}
+.md-code-view .md-code-pre {
+  margin: 0;
+  padding: 20px 24px;
+  border-radius: 10px;
+  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 13.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;   /* 长行折行,避免横向滚动 */
+  word-break: break-word;
+  overflow-x: visible;
+}
+.md-code-view .md-code-pre code {
+  font-size: inherit;      /* 覆盖 .md-body pre code 的 0.82em */
+  font-family: inherit;
+  white-space: inherit;
+  background: none;
+  padding: 0;
+  border: 0;
+}
+/* 代码视图标题行:目录点击 scrollIntoView 的落点留白 */
+.md-code-view .md-src-heading {
+  scroll-margin-top: 16px;
+}

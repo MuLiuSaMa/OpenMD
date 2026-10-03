@@ -1,0 +1,24 @@
+{
+  "app_title": "OpenMD Uninstaller",
+  "app_name": "OpenMD",
+  "app_description": "Game Toolkit for Modern Players",
+
+  "confirm_title": "Uninstall OpenMD",
+  "confirm_desc": "Are you sure you want to uninstall OpenMD? This will remove all program files, shortcuts, and system registry entries.",
+  "confirm_warning": "This action cannot be undone. Please make sure you have backed up important data.",
+  "confirm_location": "Installation location:",
+  "confirm_btn": "Start Uninstall",
+
+  "uninstall_title": "Uninstalling",
+  "uninstall_desc": "Please wait while OpenMD is being removed...",
+  "uninstall_deleting": "Deleting program files...",
+  "uninstall_shortcuts": "Removing shortcuts...",
+  "uninstall_registry": "Cleaning registry entries...",
+  "uninstall_done": "Uninstall complete!",
+
+  "complete_title": "Uninstall Complete",
+  "complete_desc": "OpenMD has been completely removed from your computer.",
+  "complete_btn": "Done",
+
+  "btn_cancel": "Cancel"
+}

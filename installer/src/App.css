@@ -1,0 +1,463 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  background: #0a0a0a;
+  color: #ffffff;
+}
+
+/* ── Title Bar ── */
+.titlebar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 8px;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1000;
+}
+
+.titlebar-spacer {
+  flex: 1;
+  height: 100%;
+}
+
+.titlebar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: none;
+}
+
+.titlebar-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.titlebar-btn-close:hover {
+  background: rgba(255, 255, 255, 0.28);
+  color: #0a0a0a;
+}
+
+/* ── App Layout (fixed logo shell) ── */
+.installer-app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 44px);
+  background: transparent;
+  overflow: hidden;
+}
+
+/* 居中文字 Logo（资源已按字形包围盒裁剪为 @2x，无透明留白，避免浏览器大幅缩放发虚） */
+.tagline {
+  flex-shrink: 0;
+  margin-top: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 40px;
+}
+
+.tagline img {
+  width: 380px;
+  height: auto;
+}
+
+.installer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 48px 48px;
+  overflow-y: auto;
+  background: transparent;
+  position: relative;
+  min-height: 0;
+}
+
+/* ── Typography ── */
+.page-title {
+  font-size: 23px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #ffffff;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 18px;
+}
+
+/* ── Monochrome panel ── */
+.glass-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+/* ── Progress (thin white) ── */
+.progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+}
+
+/* 进度条上方小字行：左状态、右百分比 */
+.progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.progress-meta .progress-label {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.progress-meta .progress-value {
+  color: #ffffff;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #ffffff;
+  border-radius: 2px;
+  transition: none;
+}
+
+/* Logo 正下方的安装进度块 */
+.install-progress {
+  width: 100%;
+  max-width: 520px;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: #e5e5e5;
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 8px 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Directory Selector ── */
+.dir-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 42px;
+}
+
+.dir-selector input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-size: 14px;
+  height: 100%;
+}
+
+.dir-selector input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.dir-selector button {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dir-selector button:hover {
+  background: #e5e5e5;
+}
+
+/* ── License Scroll ── */
+.license-scroll {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  min-height: 200px;
+}
+
+.license-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.license-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.license-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+/* ── File List ── */
+.file-list {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 12px;
+}
+
+.file-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.file-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+
+/* ── Space Spinner ── */
+.space-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Checkbox ── */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  display: none;
+}
+
+.checkbox-mark {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: none;
+  background: transparent;
+}
+
+.checkbox-label input:checked + .checkbox-mark {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.checkbox-mark::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #0a0a0a;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translateY(-1px);
+  opacity: 0;
+  transition: none;
+}
+
+.checkbox-label input:checked + .checkbox-mark::after {
+  opacity: 1;
+}
+
+/* ── Mode Select Buttons ── */
+.mode-buttons {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.mode-btn {
+  flex: 1;
+  height: 42px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mode-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Agreement Row ── */
+.agree-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.agree-link {
+  color: #ffffff;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  margin-left: 2px;
+}
+
+.agree-link:hover {
+  color: #e5e5e5;
+}
+
+/* ── License Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.modal-box {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  height: 78%;
+  padding: 20px;
+  overflow: hidden;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  cursor: pointer;
+  transition: none;
+}
+
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}

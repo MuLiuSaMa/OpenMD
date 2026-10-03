@@ -1,0 +1,14 @@
+{
+  "identifier": "default",
+  "description": "Capability for the uninstaller window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:path:default",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "dialog:default",
+    "shell:default"
+  ]
+}

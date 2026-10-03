@@ -1,0 +1,54 @@
+{
+  "app_title": "OpenMD Setup",
+  "app_name": "OpenMD",
+  "app_description": "Game Toolkit for Modern Players",
+
+  "quick_install": "Quick Install",
+  "custom_install": "Custom Install",
+  "upgrade": "Update",
+  "agree_prefix": "I have read and agree to",
+  "agree_terms_name": "the License Agreement",
+  "close": "Close",
+
+  "step_welcome": "Welcome",
+  "step_license": "License",
+  "step_directory": "Directory",
+  "step_install": "Installing",
+  "step_finish": "Finish",
+
+  "welcome_title": "Welcome to OpenMD Setup",
+  "welcome_desc": "This wizard will guide you through installing OpenMD, a system optimization toolkit designed for gamers.",
+
+  "license_title": "License Agreement",
+  "license_desc": "Please read the following license agreement before installing.",
+  "license_agree": "I accept the agreement",
+
+  "dir_title": "Choose Install Location",
+  "dir_desc": "Select the directory where OpenMD will be installed.",
+  "dir_browse": "Browse",
+  "dir_space": "Available Space",
+  "dir_required": "Required Space",
+
+  "install_title": "Installing",
+  "install_desc": "Please wait while OpenMD is being installed...",
+  "install_copying": "Copying files...",
+  "install_shortcuts": "Creating shortcuts...",
+  "install_register": "Registering system information...",
+  "install_done": "Installation complete!",
+
+  "finish_title": "Installation Complete",
+  "finish_desc": "OpenMD has been successfully installed.",
+  "finish_launch": "Run OpenMD",
+  "finish_desktop": "Create desktop shortcut",
+  "finish_done": "Finish",
+
+  "btn_next": "Next",
+  "btn_back": "Back",
+  "btn_install": "Install",
+  "btn_cancel": "Cancel",
+  "launch_now": "Launch Now",
+
+  "error_admin": "Administrator privileges required",
+  "error_space": "Insufficient disk space",
+  "error_generic": "An error occurred during installation"
+}
