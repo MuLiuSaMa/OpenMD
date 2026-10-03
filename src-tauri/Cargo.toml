@@ -1,6 +1,6 @@
 [package]
 name = "openmd"
-version = "1.0.0"
+version = "1.0.1"
 description = "OpenMD — a local-first Markdown viewer"
 authors = ["OpenMD"]
 edition = "2021"
