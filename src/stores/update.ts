@@ -54,7 +54,7 @@ export const useUpdate = create<UpdateState>((set, get) => ({
 
   check: async () => {
     set({ lastCheck: "checking" });
-    const current = await getVersion().catch(() => "0.1.0");
+    const current = await getVersion().catch(() => "1.0.0");
     const release = await fetchLatestRelease();
     if (!release) {
       set({ lastCheck: "error" });
