@@ -1,5 +1,3 @@
-# OpenMD
-
 <p align="center">
   <img src="public/wordmark-black.png" alt="OpenMD" width="320" />
 </p>
