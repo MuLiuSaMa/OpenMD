@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/wordmark-black.png" alt="OpenMD" width="320" />
+  <img src="public/wordmark-black.png" alt="OpenMD" width="320">
 </p>
 
 <p align="center">本地优先的 Markdown 阅读器 — 为阅读而生，快速、干净、无干扰。</p>
@@ -49,26 +49,30 @@
 <p align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">主页 — 最近文档</span></p>
 
 <p align="center">    
-  <img src="docs/home.png" alt="主页" width="720" />  
+  <img src="docs/home.png" alt="主页" width="720">  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">渲染预览 — 目录导航与滚动同步</span></p>
 
 <p align="center">    
-  <img src="docs/preview.png" alt="渲染预览" width="720" />  
+  <img src="docs/preview.png" alt="渲染预览" width="720">  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">源码视图</span></p>
 
 <p align="center">    
-  <img src="docs/code.png" alt="源码高亮" width="720" />  
+  <img src="docs/code.png" alt="源码高亮" width="720">  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">亮暗色主题一键切换</span></p>
 
 <p align="center">    
-  <img src="docs/theme-switch.png" alt="主题切换" width="720" />  
+  <img src="docs/theme-switch.png" alt="主题切换" width="720">  
 </p>
+
+<p align="center">即时编辑</p>
+
+<p align="center"><img src="docs/bianji.png" alt="图片" width="720" style=""></p>
 
 ## 技术栈
 
