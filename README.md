@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="http://asset.localhost/D%3A%5COpenMD%5Cpublic%5Cwordmark-black.png" data-original-src="http://asset.localhost/D%3A%5COpenMD%5Cpublic%5Cwordmark-black.png" alt="OpenMD" width="320">
+  <img src="public/wordmark-black.png" alt="OpenMD" width="320" />
 </p>
 
 <p align="center">本地优先的 Markdown 阅读器 — 为阅读而生，快速、干净、无干扰。</p>
@@ -49,30 +49,26 @@
 <p align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">主页 — 最近文档</span></p>
 
 <p align="center">    
-  <img src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Chome.png" data-original-src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Chome.png" alt="主页" width="720">  
+  <img src="docs/home.png" alt="主页" width="720" />  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">渲染预览 — 目录导航与滚动同步</span></p>
 
 <p align="center">    
-  <img src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Cpreview.png" data-original-src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Cpreview.png" alt="渲染预览" width="720">  
+  <img src="docs/preview.png" alt="渲染预览" width="720" />  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">源码视图</span></p>
 
 <p align="center">    
-  <img src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Ccode.png" data-original-src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Ccode.png" alt="源码高亮" width="720">  
+  <img src="docs/code.png" alt="源码高亮" width="720" />  
 </p>
 
 <p dir="auto" align="center"><span style="font-family: MiSans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI Variable&quot;, &quot;Segoe UI&quot;, &quot;Microsoft YaHei UI&quot;, &quot;Microsoft YaHei&quot;, sans-serif; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; font-size: 15px;">亮暗色主题一键切换</span></p>
 
 <p align="center">    
-  <img src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Ctheme-switch.png" data-original-src="http://asset.localhost/D%3A%5COpenMD%5Cdocs%5Ctheme-switch.png" alt="主题切换" width="720">  
+  <img src="docs/theme-switch.png" alt="主题切换" width="720" />  
 </p>
-
-<p dir="auto" align="center">即时编辑</p>
-
-<p dir="auto" align="center"><img src="http://asset.localhost/C%3A%5CUsers%5CMuLiu%5CDesktop%5Cbabd0e9c-135f-489c-a151-5e42f88d1f63.png" data-original-src="../../C:/Users/MuLiu/Desktop/babd0e9c-135f-489c-a151-5e42f88d1f63.png" alt="图片" width="726" style=""><sub></sub></p>
 
 ## 技术栈
 
