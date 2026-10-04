@@ -161,6 +161,7 @@ pub fn run() {
             commands::write_markdown_file,
             commands::resolve_path,
             commands::path_exists,
+            commands::import_image,
             commands::allow_assets,
             editors::detect_editors,
             editors::open_file_with,

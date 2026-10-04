@@ -21,7 +21,6 @@ import { openUrl, openPath } from "@tauri-apps/plugin-opener";
 import {
   dirnameOf,
   frontmatterLineOffset,
-  relativePath,
   renderFull,
   resolveLocalPath,
 } from "../renderer/pipeline";
@@ -36,7 +35,7 @@ import {
 } from "../renderer/clipboard";
 import hljs from "../renderer/hljs";
 import { extractToc, isObserverPaused, useToc } from "../stores/toc";
-import { allowAssets, openImageDialog, pathExists } from "../tauri/api";
+import { allowAssets, importImage, openImageDialog, pathExists } from "../tauri/api";
 import { useTabs, type Tab } from "../stores/tabs";
 import { useSettings, type ViewMode } from "../stores/settings";
 import { withViewTransition } from "../utils/viewTransition";
@@ -647,14 +646,14 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
   const escapeAttr = (v: string) => v.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
 
-  /** 选图 → 授权 → 拿到 markdown 相对路径与 asset URL。 */
+  /** 选图 → 归档到文档目录(已在目录内则原地引用)→ 拿到 markdown 相对路径与 asset URL。 */
   const pickImage = useCallback(async (): Promise<{ rel: string; src: string } | null> => {
     if (!tab.path) return null;
     const abs = await openImageDialog();
     if (!abs) return null;
-    const rel = relativePath(dirnameOf(tab.path), abs);
-    await allowAssets(tab.path, [abs]).catch((e) => console.error("asset allow failed:", e));
-    return { rel, src: convertFileSrc(abs) };
+    const imported = await importImage(tab.path, abs);
+    await allowAssets(tab.path, [imported.abs]).catch((e) => console.error("asset allow failed:", e));
+    return { rel: imported.rel, src: convertFileSrc(imported.abs) };
   }, [tab.path]);
 
   /** 预览:在当前光标处插入图片(光标不在文档内则定位到文末插入)。

@@ -27,6 +27,25 @@ export async function allowAssets(documentPath: string, paths: string[]): Promis
   return invoke("allow_assets", { documentPath, paths });
 }
 
+export interface ImportedImage {
+  /** Absolute path of the image on disk (for the asset protocol). */
+  abs: string;
+  /** Markdown-relative path from the document's directory, `/`-separated. */
+  rel: string;
+}
+
+/**
+ * Bring a picked image beside the document and return the path to reference it
+ * by. An image already inside the document's directory is referenced in place;
+ * anything else is copied into a `docs/` folder created next to the document.
+ */
+export async function importImage(
+  documentPath: string,
+  sourcePath: string,
+): Promise<ImportedImage> {
+  return invoke("import_image", { documentPath, sourcePath });
+}
+
 export async function watchFile(path: string): Promise<void> {
   return invoke("watch_file", { path });
 }

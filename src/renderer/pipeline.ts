@@ -368,32 +368,3 @@ export function dirnameOf(filePath: string): string {
   const idx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
   return idx > 0 ? filePath.slice(0, idx) : filePath;
 }
-
-/**
- * Markdown-relative src for an image chosen outside the document: from the
- * document's directory to the file, `../` per level up, spaces escaped as
- * `%20` so the markdown link stays single-token. Returns the absolute path
- * unchanged when the two don't share a prefix (rare; renderer still resolves
- * it via `resolveLocalPath`).
- */
-export function relativePath(fromDir: string, toFile: string): string {
-  const split = (p: string) => p.split(/[\\/]+/).filter((s) => s !== "" && s !== ".");
-  const from = split(fromDir);
-  const to = split(toFile);
-  // Windows paths are case-insensitive; compare segments case-insensitively
-  // but keep the target's original casing.
-  let common = 0;
-  while (
-    common < from.length &&
-    common < to.length - 1 &&
-    from[common].toLowerCase() === to[common].toLowerCase()
-  ) {
-    common += 1;
-  }
-  const ups = from.length - common;
-  const parts: string[] = [];
-  for (let i = 0; i < ups; i++) parts.push("..");
-  for (let i = common; i < to.length; i++) parts.push(to[i]);
-  const rel = parts.join("/");
-  return encodeURI(rel).replace(/%5C/g, "/");
-}

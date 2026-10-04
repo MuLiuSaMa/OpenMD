@@ -152,6 +152,148 @@ pub fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
 }
 
+/// Image extensions the editor's "insert image" action accepts.
+const ALLOWED_IMAGE_EXTENSIONS: &[&str] =
+    &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"];
+
+/// Folder the editor creates beside a document to hold the images it imports.
+const IMAGE_FOLDER: &str = "docs";
+
+fn has_allowed_image_extension(p: &Path) -> bool {
+    p.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| {
+            ALLOWED_IMAGE_EXTENSIONS
+                .iter()
+                .any(|a| a.eq_ignore_ascii_case(e))
+        })
+        .unwrap_or(false)
+}
+
+/// Where an imported image ended up, for the editor to reference and display.
+#[derive(serde::Serialize)]
+pub struct ImportedImage {
+    /// Absolute path of the file on disk (what the webview loads).
+    pub abs: String,
+    /// Markdown-relative path from the document's directory, `/`-separated.
+    pub rel: String,
+}
+
+/// Bring a picked image beside `document_path` so the markdown can reference it
+/// with a portable relative path instead of an absolute one.
+///
+/// An image already inside the document's directory is referenced where it is —
+/// copying would only duplicate a file the document tree already ships. Anything
+/// from outside is copied into `<document dir>/docs/` (created on demand). Name
+/// collisions get a `-1`, `-2`, … suffix, unless an identical file is already
+/// there, in which case it is reused so re-inserting the same image is a no-op.
+///
+/// `rel` comes back `/`-separated with spaces percent-encoded, ready to drop
+/// straight into `![](...)`.
+#[tauri::command]
+pub fn import_image(document_path: String, source_path: String) -> Result<ImportedImage, String> {
+    let source = Path::new(&source_path);
+    if !has_allowed_image_extension(source) {
+        return Err(format!("Not an image file: {}", source_path));
+    }
+    if !source.is_file() {
+        return Err(format!("Image not found: {}", source_path));
+    }
+    // Canonicalize so symlinks and `..` cannot redirect the copy elsewhere.
+    let source =
+        fs::canonicalize(source).map_err(|e| format!("Failed to resolve image {}: {}", source_path, e))?;
+
+    let doc_dir = Path::new(&document_path)
+        .parent()
+        .ok_or_else(|| format!("Document has no parent directory: {}", document_path))?;
+    let doc_dir = fs::canonicalize(doc_dir)
+        .map_err(|e| format!("Failed to resolve the document's directory: {}", e))?;
+
+    let target = if source.starts_with(&doc_dir) {
+        source.clone()
+    } else {
+        let folder = doc_dir.join(IMAGE_FOLDER);
+        fs::create_dir_all(&folder)
+            .map_err(|e| format!("Failed to create {}: {}", folder.display(), e))?;
+        let name = source
+            .file_name()
+            .ok_or_else(|| format!("Image has no file name: {}", source_path))?;
+        let (target, needs_copy) = unique_target(&folder, name, &source);
+        if needs_copy {
+            fs::copy(&source, &target)
+                .map_err(|e| format!("Failed to copy image into {}: {}", folder.display(), e))?;
+        }
+        target
+    };
+
+    Ok(ImportedImage {
+        rel: markdown_relative_path(&doc_dir, &target),
+        abs: strip_verbatim_prefix(target.to_string_lossy().into_owned()),
+    })
+}
+
+/// A path inside `folder` for `name` that either does not exist yet, or already
+/// holds a byte-identical copy of `source` (reuse instead of piling up `-1`,
+/// `-2` duplicates of the same picture). The bool is "must copy".
+fn unique_target(folder: &Path, name: &std::ffi::OsStr, source: &Path) -> (PathBuf, bool) {
+    let candidate = folder.join(name);
+    if !candidate.exists() {
+        return (candidate, true);
+    }
+    if files_equal(&candidate, source) {
+        return (candidate, false);
+    }
+
+    let stem = Path::new(name)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("image");
+    let ext = Path::new(name).extension().and_then(|s| s.to_str());
+    let mut n = 1u32;
+    loop {
+        let file = match ext {
+            Some(ext) => format!("{stem}-{n}.{ext}"),
+            None => format!("{stem}-{n}"),
+        };
+        let candidate = folder.join(file);
+        if !candidate.exists() {
+            return (candidate, true);
+        }
+        if files_equal(&candidate, source) {
+            return (candidate, false);
+        }
+        n += 1;
+    }
+}
+
+fn files_equal(a: &Path, b: &Path) -> bool {
+    match (fs::read(a), fs::read(b)) {
+        (Ok(left), Ok(right)) => left == right,
+        _ => false,
+    }
+}
+
+/// Path from `from_dir` to `to_file`, `/`-separated with spaces percent-encoded
+/// so it stays a single markdown token. Both arguments are absolute.
+fn markdown_relative_path(from_dir: &Path, to_file: &Path) -> String {
+    let from: Vec<_> = from_dir.components().collect();
+    let to: Vec<_> = to_file.components().collect();
+    let mut common = 0;
+    // Stop one short of `to`'s end so the file name itself is never matched.
+    while common < from.len() && common < to.len() - 1 && from[common] == to[common] {
+        common += 1;
+    }
+
+    let mut parts: Vec<String> = Vec::new();
+    for _ in common..from.len() {
+        parts.push("..".to_string());
+    }
+    for component in &to[common..] {
+        parts.push(component.as_os_str().to_string_lossy().into_owned());
+    }
+    parts.join("/").replace(' ', "%20")
+}
+
 /// Allow the webview's asset protocol to serve specific image files — but only
 /// files a document is entitled to.
 ///

@@ -67,25 +67,50 @@ function makeService(): TurndownService {
   return instance;
 }
 
-/** Strip app-injected markers/UI, returning clean HTML for conversion. */
-function cleanOuterHtml(el: HTMLElement): string {
+/** Clone a block with the app-injected markers/UI stripped. */
+function cloneCleaned(el: HTMLElement): HTMLElement {
   const clone = el.cloneNode(true) as HTMLElement;
   clone.querySelectorAll(".code-copy-btn").forEach((n) => n.remove());
   for (const attr of ["data-source-line", "data-source-end", "data-raw-html", "contenteditable"]) {
     clone.removeAttribute(attr);
     clone.querySelectorAll(`[${attr}]`).forEach((n) => n.removeAttribute(attr));
   }
+  return clone;
+}
+
+/**
+ * Clean HTML for the turndown path. `data-original-src` is deliberately kept —
+ * the image rule below needs it to emit the markdown-relative path.
+ */
+function cleanOuterHtml(el: HTMLElement): string {
+  return cloneCleaned(el).outerHTML;
+}
+
+/**
+ * Clean HTML for the raw-HTML path (aligned blocks, hand-written HTML). These
+ * never reach turndown, so the webview's asset-protocol `src` has to be swapped
+ * back to the markdown-relative path here. Without this, a `<p align="center">`
+ * wrapping a screenshot would bake `http://asset.localhost/…` into the source —
+ * which is how a README's image links end up pointing at one machine's disk.
+ */
+function rawHtmlToMarkdown(el: HTMLElement): string {
+  const clone = cloneCleaned(el);
+  clone.querySelectorAll("img[data-original-src]").forEach((img) => {
+    const original = img.getAttribute("data-original-src");
+    if (original) img.setAttribute("src", original);
+    img.removeAttribute("data-original-src");
+  });
   return clone.outerHTML;
 }
 
 /**
  * Convert one rendered block element back to markdown. Blocks the renderer
  * passed through as raw HTML (`data-raw-html`, stamped on html_block output —
- * badge groups, `<div dir>` wrappers…) are emitted verbatim so hand-written
- * HTML survives the round trip; everything else goes through turndown.
+ * badge groups, `<div dir>` wrappers…) are emitted as HTML so hand-written
+ * markup survives the round trip; everything else goes through turndown.
  */
 export function blockElementToMarkdown(el: HTMLElement): string {
-  if (el.dataset.rawHtml !== undefined) return cleanOuterHtml(el);
+  if (el.dataset.rawHtml !== undefined) return rawHtmlToMarkdown(el);
   // 带对齐属性的段落/标题:markdown 表达不了对齐,整块转原始 HTML
   // (同 GitHub 的 `<p align="center">` 用法)。
   const align = el.getAttribute("align");
@@ -94,7 +119,7 @@ export function blockElementToMarkdown(el: HTMLElement): string {
     /^(?:left|center|right)$/i.test(align) &&
     /^(?:P|H[1-6]|DIV)$/.test(el.tagName)
   ) {
-    return cleanOuterHtml(el);
+    return rawHtmlToMarkdown(el);
   }
   return markdownFromHtml(cleanOuterHtml(el));
 }
