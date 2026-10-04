@@ -1,6 +1,6 @@
 [package]
 name = "openmd"
-version = "1.0.1"
+version = "1.0.2"
 description = "OpenMD — a local-first Markdown viewer"
 authors = ["OpenMD"]
 edition = "2021"
@@ -19,6 +19,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
@@ -28,9 +29,10 @@ notify-debouncer-mini = "0.5"
 reqwest = { version = "0.12", features = ["stream", "json"] }
 futures-util = "0.3"
 dirs = "5.0"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_WindowsProgramming", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi"] }
 winreg = "0.52"
 
 # MSVC link.exe 的本地化提示（如"正在创建库..."）会被透传为警告，这里关闭

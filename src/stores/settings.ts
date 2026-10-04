@@ -13,12 +13,15 @@ interface SettingsState {
   fullWidth: boolean;
   /** 主视图模式:预览(渲染)或代码(原始 Markdown 源码)。 */
   viewMode: ViewMode;
+  /** 编辑模式:代码视图出现可编辑覆盖层,预览视图 contentEditable。 */
+  editMode: boolean;
   /** 关闭窗口行为(勾选"不再提醒"后由关闭对话框写入)。 */
   closeAction: CloseAction;
   setFontSize: (n: number) => void;
   toggleToc: () => void;
   toggleFullWidth: () => void;
   setViewMode: (v: ViewMode) => void;
+  toggleEditMode: () => void;
   setCloseAction: (v: CloseAction) => void;
 }
 
@@ -29,12 +32,14 @@ export const useSettings = create<SettingsState>()(
       tocOpen: true,
       fullWidth: false,
       viewMode: "preview",
+      editMode: false,
       closeAction: "ask",
       // 字号滑动过渡在 MarkdownView 的 font-size transition 中实现。
       setFontSize: (n) => set({ fontSize: Math.min(28, Math.max(13, n)) }),
       toggleToc: () => set((s) => ({ tocOpen: !s.tocOpen })),
       toggleFullWidth: () => set((s) => ({ fullWidth: !s.fullWidth })),
       setViewMode: (v) => set({ viewMode: v }),
+      toggleEditMode: () => set((s) => ({ editMode: !s.editMode })),
       setCloseAction: (v) => set({ closeAction: v }),
     }),
     { name: "openmd-settings" },

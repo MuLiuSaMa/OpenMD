@@ -264,7 +264,11 @@
 }
 
 /* ---------- 图片 / 分割线 ---------- */
+/* Chakra preflight 把 img 设为 display: block,会让 <p align=center> 里的
+ * 徽章图一行一个竖向堆叠;markdown 正文需要行内流式排版,恢复 inline-block。 */
 .md-body img {
+  display: inline-block;
+  vertical-align: middle;
   max-width: 100%;
   height: auto;
   border-radius: 8px;
@@ -600,4 +604,45 @@
 /* 代码视图标题行:目录点击 scrollIntoView 的落点留白 */
 .md-code-view .md-src-heading {
   scroll-margin-top: 16px;
+}
+
+/* =========================================================
+   编辑模式(代码视图):透明 textarea 与高亮层网格叠放。
+   textarea 必须与 .md-code-pre 的字体/行高/padding/折行完全
+   一致,文字才能与高亮背景逐像素对齐;文字透明只留光标。
+   ========================================================= */
+.md-code-editor {
+  display: grid;
+}
+.md-code-editor > * {
+  grid-area: 1 / 1;
+}
+.md-code-view .md-code-textarea {
+  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin: 0;
+  padding: 20px 24px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
+  caret-color: #1f2328;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  resize: none;
+  outline: none;
+  z-index: 1;
+  cursor: text;
+}
+.dark .md-code-view .md-code-textarea,
+[data-theme="dark"] .md-code-view .md-code-textarea {
+  caret-color: #e6e6e6;
+}
+
+/* 编辑模式下的预览:给一块可编辑区域一个克制的视觉提示。 */
+.md-body[contenteditable="true"] {
+  box-shadow: 0 0 0 1px var(--md-edit-ring, rgba(127, 127, 127, 0.25));
+  border-radius: 10px;
 }

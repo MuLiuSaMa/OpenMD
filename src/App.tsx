@@ -12,6 +12,7 @@ import { EmptyState } from "./components/EmptyState";
 import { StatusBar } from "./components/StatusBar";
 import { UpdatePopup } from "./components/UpdatePopup";
 import { CloseDialog } from "./components/CloseDialog";
+import { UnsavedDialog } from "./components/UnsavedDialog";
 import { HOME_TAB_ID, useTabs } from "./stores/tabs";
 import { useSettings } from "./stores/settings";
 import { useUpdate } from "./stores/update";
@@ -122,11 +123,26 @@ export default function App() {
     })();
   }, [openPath]);
 
-  // OS file watchers → refresh the tab that owns the file.
+  // OS file watchers → refresh the tab that owns the file. Per-path 100ms
+  // coalescing (editors fire several events per save) plus a suppression
+  // window after our own save — the tab already holds that content.
   useEffect(() => {
     if (!inTauri) return;
+    const pending = new Map<string, number>();
+    const OWN_SAVE_SUPPRESSION_MS = 1500;
+    const COALESCE_MS = 100;
     const unlistenFileChanged = onFileChanged(({ path }) => {
-      void refreshPath(path);
+      const prev = pending.get(path);
+      if (prev) window.clearTimeout(prev);
+      pending.set(
+        path,
+        window.setTimeout(() => {
+          pending.delete(path);
+          const tab = useTabs.getState().tabs.find((t) => t.path === path);
+          if (tab?.lastSavedAt && Date.now() - tab.lastSavedAt < OWN_SAVE_SUPPRESSION_MS) return;
+          void refreshPath(path);
+        }, COALESCE_MS),
+      );
     });
     const unlistenOpened = onOpenedFiles((paths) => {
       void logAssoc(`frontend opened-files event: ${paths.join(", ")}`);
@@ -139,6 +155,14 @@ export default function App() {
       unlistenOpened.then((fn) => fn());
     };
   }, [refreshPath, openPath]);
+
+  // 全局禁用 WebView2 默认右键菜单;内容区的自定义菜单在 MarkdownView 里,
+  // 内容区之外右键静默无菜单。
+  useEffect(() => {
+    const onContextMenu = (e: MouseEvent) => e.preventDefault();
+    window.addEventListener("contextmenu", onContextMenu);
+    return () => window.removeEventListener("contextmenu", onContextMenu);
+  }, []);
 
   // Drag & drop onto the window opens files.
   useEffect(() => {
@@ -187,8 +211,14 @@ export default function App() {
       } else if (key === "w") {
         if (state.activeId !== HOME_TAB_ID) {
           e.preventDefault();
-          state.closeTab(state.activeId);
+          void state.requestCloseTab(state.activeId);
         }
+      } else if (key === "s") {
+        e.preventDefault();
+        void state.saveTab(state.activeId);
+      } else if (key === "e") {
+        e.preventDefault();
+        useSettings.getState().toggleEditMode();
       } else if (key === "tab") {
         e.preventDefault();
         const idx = state.tabs.findIndex((t) => t.id === state.activeId);
@@ -278,6 +308,7 @@ export default function App() {
       )}
       <UpdatePopup />
       <CloseDialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} />
+      <UnsavedDialog />
     </Flex>
   );
 }

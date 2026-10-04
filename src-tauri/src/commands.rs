@@ -56,6 +56,26 @@ pub fn read_markdown_file(path: String) -> Result<String, String> {
     })
 }
 
+/// Write markdown content back to a file — the edit mode's save path.
+///
+/// Bounded by the same extension allowlist as [`read_markdown_file`]: the web
+/// view can only ever overwrite the text documents it is allowed to open,
+/// never an arbitrary path like a script or the SSH config.
+#[tauri::command]
+pub fn write_markdown_file(path: String, content: String) -> Result<(), String> {
+    let p = Path::new(&path);
+
+    if !has_allowed_extension(p) {
+        return Err(format!("Refusing to write a non-text file: {}", path));
+    }
+
+    if p.exists() && !p.is_file() {
+        return Err(format!("Not a file: {}", path));
+    }
+
+    fs::write(p, content).map_err(|e| format!("Failed to write file: {}", e))
+}
+
 /// The current user's home directory.
 ///
 /// `std::env::var("HOME")` is not set on Windows, so `USERPROFILE` (plus the
@@ -308,6 +328,44 @@ mod fs_scope_tests {
         assert!(err.contains("Re-save it as UTF-8"), "got: {err}");
         assert!(!err.contains("stream did not contain"), "raw io error leaked: {err}");
 
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}
+
+#[cfg(test)]
+mod write_tests {
+    use super::test_support::scratch;
+    use super::{read_markdown_file, write_markdown_file};
+
+    #[test]
+    fn write_refuses_a_non_text_path_before_touching_disk() {
+        // The path does not exist; the extension guard must fire first, so the
+        // error is the refusal, never an io error.
+        let err = write_markdown_file("/home/u/a.sh".into(), "x".into()).unwrap_err();
+        assert!(err.contains("Refusing to write"), "got: {err}");
+    }
+
+    #[test]
+    fn write_then_read_round_trips_the_content() {
+        let dir = scratch("write");
+        let file = dir.join("note.md");
+        write_markdown_file(file.to_string_lossy().into_owned(), "# Hi 中文\n".into()).unwrap();
+
+        let got = read_markdown_file(file.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(got, "# Hi 中文\n");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn write_refuses_a_directory_with_a_text_extension() {
+        // A directory named `folder.md` passes the extension guard; the
+        // is_file check is what keeps the io error meaningful.
+        let dir = scratch("write");
+        let folder = dir.join("folder.md");
+        std::fs::create_dir_all(&folder).unwrap();
+
+        let err = write_markdown_file(folder.to_string_lossy().into_owned(), "x".into()).unwrap_err();
+        assert!(err.contains("Not a file"), "got: {err}");
         std::fs::remove_dir_all(&dir).ok();
     }
 }

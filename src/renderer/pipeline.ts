@@ -43,18 +43,49 @@ export function stripFrontmatter(markdown: string): string {
   return m ? m[2] : source;
 }
 
+/**
+ * Lines the leading frontmatter block occupies (0 when absent).
+ *
+ * `data-source-line` coordinates are relative to the markdown body AFTER the
+ * frontmatter is stripped, while the editor's draft covers the whole file —
+ * line patches from preview edits must add this offset before splicing.
+ */
+export function frontmatterLineOffset(markdown: string): number {
+  const m = stripBom(markdown).match(FRONTMATTER_RE);
+  return m ? m[1].split("\n").length + 2 : 0;
+}
+
 let md: MarkdownIt | null = null;
 
 /**
  * Stamp top-level block elements with `data-source-line="N"` (0-indexed line
- * in the source markdown). Used for scroll-position restore and, in v2, for
- * view ↔ raw scroll sync.
+ * in the source markdown) plus `data-source-end="M"` (exclusive). Used for
+ * scroll-position restore, view ↔ raw scroll sync, and — in edit mode — for
+ * mapping a preview edit back to the source lines it must replace.
+ *
+ * Two stamping paths: regular block tokens (`paragraph_open`, …) go through
+ * `attrSet` because their renderer merges token attrs into the element. Raw
+ * HTML blocks render `token.content` verbatim — attrs are ignored there — so
+ * the attributes are injected into the opening tag string instead. This is
+ * what makes badge blocks (`<p align="center">…</p>`) addressable.
  */
 function addSourceLinePlugin(mdInstance: MarkdownIt) {
   mdInstance.core.ruler.push("source-line", (state) => {
     for (const token of state.tokens) {
-      if (token.map && token.level === 0 && token.type.endsWith("_open")) {
+      if (!token.map || token.level !== 0) continue;
+      if (token.type.endsWith("_open")) {
         token.attrSet("data-source-line", String(token.map[0]));
+        token.attrSet("data-source-end", String(token.map[1]));
+      } else if (token.type === "html_block" && !/data-source-line=/.test(token.content)) {
+        // Right after the tag name — safe even when attributes contain `>`
+        // inside quoted values. Close tags (`</p>`) and comments don't match
+        // and stay untouched. `data-raw-html` marks the block so edit-mode
+        // conversion saves it back as verbatim HTML instead of degrading it
+        // to markdown syntax (badge blocks keep their align/style attrs).
+        token.content = token.content.replace(
+          /^<([a-zA-Z][^\s/>]*)/,
+          `<$1 data-source-line="${token.map[0]}" data-source-end="${token.map[1]}" data-raw-html="1"`,
+        );
       }
     }
   });
@@ -71,10 +102,10 @@ const DIR_AUTO_BLOCKS = new Set([
   "th_open",
 ]);
 
-// A paragraph whose whole content is `<div dir="rtl">` / `<div dir="ltr">`
-// (any other attributes tolerated and ignored) or `</div>`. Raw HTML is
-// disabled in the renderer, so these arrive as ordinary paragraphs of text;
-// we recognise exactly these two shapes and nothing else.
+// A GitHub-style wrapper: a block whose whole content is `<div dir="rtl">` /
+// `<div dir="ltr">` (any other attributes tolerated and ignored) or `</div>`.
+// With raw HTML enabled these arrive as real html_block tokens; anything else
+// is left untouched.
 const DIR_WRAPPER_MAX_LEN = 256;
 const DIR_WRAPPER_TAG = /^<div(?:\s[^>]*)?>$/i;
 const DIR_WRAPPER_VALUE = /(?:^|\s)dir\s*=\s*["']?(rtl|ltr)["']?(?=\s|>|$)/i;
@@ -90,27 +121,22 @@ function wrapperDirection(content: string): "rtl" | "ltr" | null {
  * Give each text-bearing block a direction. By default `dir="auto"`: the
  * block picks its own base direction from its first strong-directional
  * character, so RTL paragraphs right-align on their own. GitHub-style
- * `<div dir="rtl">` wrappers are honoured (the open/close lines are dropped,
- * every block inside gets that explicit direction).
+ * `<div dir="rtl">` wrappers are honoured: the html_block tokens stay in the
+ * output (so the div really wraps its content in the DOM) and every block
+ * between the open and close tags gets that explicit direction.
  */
 function addDirPlugin(mdInstance: MarkdownIt) {
   mdInstance.core.ruler.push("dir", (state) => {
     const tokens = state.tokens;
     const kept: typeof tokens = [];
     const stack: string[] = [];
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
-      if (
-        token.type === "paragraph_open" &&
-        !token.hidden &&
-        tokens[i + 1]?.type === "inline" &&
-        tokens[i + 2]?.type === "paragraph_close"
-      ) {
-        const content = tokens[i + 1].content.trim();
+    for (const token of tokens) {
+      if (token.type === "html_block") {
+        const content = token.content.trim();
         const open = wrapperDirection(content);
         if (open) {
           stack.push(open);
-          i += 2;
+          kept.push(token);
           continue;
         }
         if (
@@ -119,7 +145,7 @@ function addDirPlugin(mdInstance: MarkdownIt) {
           DIR_WRAPPER_CLOSE.test(content)
         ) {
           stack.pop();
-          i += 2;
+          kept.push(token);
           continue;
         }
       }
@@ -134,7 +160,9 @@ function addDirPlugin(mdInstance: MarkdownIt) {
 
 function makeMarkdownIt(): MarkdownIt {
   const instance = new MarkdownIt({
-    html: false,
+    // Raw HTML (badges, <kbd>, <details>, <div dir>…) is rendered. Everything
+    // still passes through DOMPurify in sanitizeHtml before it reaches the DOM.
+    html: true,
     linkify: true,
     typographer: true,
     highlight: (str, lang) => {
@@ -247,9 +275,12 @@ function resolveRelativeImages(html: string, baseDir: string, collected: string[
       (_match, before, src, after) => {
         try {
           const imagePath = resolveLocalPath(src, baseDir);
-          const url = `${before}${convertFileSrc(imagePath)}${after}`;
           collected.push(imagePath);
-          return url;
+          // `data-original-src` keeps the markdown-relative path on the DOM so
+          // preview-edit → markdown conversion can emit it back instead of the
+          // asset-protocol URL. `src` is re-emitted verbatim: it is already a
+          // well-formed attribute value (markdown-it escaped it).
+          return `${before}${convertFileSrc(imagePath)}" data-original-src="${src}${after}`;
         } catch {
           return `${before}${src}${after}`;
         }
@@ -336,4 +367,33 @@ function normalizePath(path: string): string {
 export function dirnameOf(filePath: string): string {
   const idx = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
   return idx > 0 ? filePath.slice(0, idx) : filePath;
+}
+
+/**
+ * Markdown-relative src for an image chosen outside the document: from the
+ * document's directory to the file, `../` per level up, spaces escaped as
+ * `%20` so the markdown link stays single-token. Returns the absolute path
+ * unchanged when the two don't share a prefix (rare; renderer still resolves
+ * it via `resolveLocalPath`).
+ */
+export function relativePath(fromDir: string, toFile: string): string {
+  const split = (p: string) => p.split(/[\\/]+/).filter((s) => s !== "" && s !== ".");
+  const from = split(fromDir);
+  const to = split(toFile);
+  // Windows paths are case-insensitive; compare segments case-insensitively
+  // but keep the target's original casing.
+  let common = 0;
+  while (
+    common < from.length &&
+    common < to.length - 1 &&
+    from[common].toLowerCase() === to[common].toLowerCase()
+  ) {
+    common += 1;
+  }
+  const ups = from.length - common;
+  const parts: string[] = [];
+  for (let i = 0; i < ups; i++) parts.push("..");
+  for (let i = common; i < to.length; i++) parts.push(to[i]);
+  const rel = parts.join("/");
+  return encodeURI(rel).replace(/%5C/g, "/");
 }

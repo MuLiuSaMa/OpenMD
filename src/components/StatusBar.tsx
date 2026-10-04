@@ -1,5 +1,5 @@
 import { HStack, Text } from "@chakra-ui/react";
-import { useTabs } from "../stores/tabs";
+import { isDirty, useTabs } from "../stores/tabs";
 import { useToc } from "../stores/toc";
 
 export function StatusBar() {
@@ -10,10 +10,10 @@ export function StatusBar() {
 
   if (!tab) return null;
 
-  const wordCount = tab.path
-    ? tab.content.trim().split(/\s+/).filter(Boolean).length
-    : 0;
-  const charCount = tab.path ? tab.content.length : 0;
+  // 编辑中的字数统计跟随草稿,保存后归位到 content。
+  const shown = tab.draft ?? tab.content;
+  const wordCount = tab.path ? shown.trim().split(/\s+/).filter(Boolean).length : 0;
+  const charCount = tab.path ? shown.length : 0;
 
   return (
     <HStack
@@ -33,6 +33,7 @@ export function StatusBar() {
         {tab.path ?? "OpenMD"}
       </Text>
       {tab.diskChanged && <Text color="orange.400">文件已在磁盘上修改</Text>}
+      {isDirty(tab) && <Text color="fg">未保存</Text>}
       {tab.path && (
         <>
           <Text>{wordCount} 词</Text>

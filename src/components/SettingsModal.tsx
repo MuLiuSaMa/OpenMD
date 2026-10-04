@@ -239,7 +239,7 @@ const AUTHOR_LINKS = [
 function AboutSection() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
-  const [version, setVersion] = useState("1.0.1");
+  const [version, setVersion] = useState("1.0.2");
   const { lastCheck, tag: latestTag, check, phase, progress, errorMsg, startDownload, install } =
     useUpdate();
 

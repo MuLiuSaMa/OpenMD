@@ -60,3 +60,6 @@ mdhero-main
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# AI workspace data
+.workbuddy-ai

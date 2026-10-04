@@ -8,6 +8,11 @@ export async function readMarkdownFile(path: string): Promise<string> {
   return invoke("read_markdown_file", { path });
 }
 
+/** Persist edited markdown content back to the file (edit mode's save). */
+export async function writeMarkdownFile(path: string, content: string): Promise<void> {
+  return invoke("write_markdown_file", { path, content });
+}
+
 export async function resolvePath(path: string): Promise<string> {
   return invoke("resolve_path", { path });
 }
@@ -59,6 +64,42 @@ export async function openFileDialog(): Promise<string[] | null> {
     title: "打开 Markdown 文件",
     filters: [{ name: "Markdown", extensions: MARKDOWN_EXTENSIONS }],
   });
+}
+
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"];
+
+/** Native single-image picker for the editor's insert/replace actions. */
+export async function openImageDialog(): Promise<string | null> {
+  const picked = await open({
+    multiple: false,
+    title: "选择图片",
+    filters: [{ name: "图片", extensions: IMAGE_EXTENSIONS }],
+  });
+  if (Array.isArray(picked)) return picked[0] ?? null;
+  return picked;
+}
+
+// ---- 用其他程序打开(扫描系统里能打开 Markdown 的程序) ----
+
+export interface EditorApp {
+  /** 显示名(FriendlyAppName / FriendlyTypeName,兑底 exe 文件名)。 */
+  name: string;
+  /** 解析出的真实 exe 路径。 */
+  exe: string;
+  /** exe 图标的 PNG data URL;提取失败为 null(前端回退通用图标)。 */
+  icon: string | null;
+  /** 系统关联了 .md(或用户最近用它打开过),菜单里排在前面。 */
+  recommended: boolean;
+}
+
+/** 扫描系统里能打开 Markdown 的程序(.md 关联 + 全部已注册应用)。 */
+export async function detectEditors(): Promise<EditorApp[]> {
+  return invoke("detect_editors");
+}
+
+/** 用选中的程序打开文件。 */
+export async function openFileWith(exe: string, path: string): Promise<void> {
+  return invoke("open_file_with", { exe, path });
 }
 
 // ---- 运行时文件关联(.md 等扩展名 → OpenMD,HKCU 注册表) ----

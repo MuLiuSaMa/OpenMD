@@ -1,4 +1,5 @@
 mod commands;
+mod editors;
 mod file_assoc;
 mod qq_group;
 mod stats;
@@ -150,15 +151,19 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(watcher::WatcherState::default())
         .manage(OpenedFiles {
             paths: Mutex::new(md_args),
         })
         .invoke_handler(tauri::generate_handler![
             commands::read_markdown_file,
+            commands::write_markdown_file,
             commands::resolve_path,
             commands::path_exists,
             commands::allow_assets,
+            editors::detect_editors,
+            editors::open_file_with,
             watcher::watch_file,
             watcher::unwatch_file,
             watcher::stop_watching,

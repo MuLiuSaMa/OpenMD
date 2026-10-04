@@ -6,7 +6,9 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "opener:allow-reveal-item-in-dir",
     "dialog:default",
+    "clipboard-manager:allow-read-text",
     "window-state:default",
     "core:window:allow-set-title",
     "core:window:allow-minimize",
