@@ -7,7 +7,7 @@ import {
   HStack,
   IconButton,
   Image,
-  NativeSelect,
+  Menu,
   Portal,
   Text,
   VStack,
@@ -19,6 +19,8 @@ import { useTranslation } from "react-i18next";
 import { FaQq } from "react-icons/fa6";
 import { RiBilibiliFill, RiTiktokFill } from "react-icons/ri";
 import {
+  Check,
+  ChevronDown,
   Download,
   Heart,
   Info,
@@ -78,6 +80,7 @@ function GeneralSection() {
 
   return (
     <VStack align="stretch" gap={0}>
+      <LanguageRow />
       <Flex
         justify="space-between"
         align="center"
@@ -434,11 +437,20 @@ function AboutSection() {
   );
 }
 
-/** 界面语言选择行(设置弹窗内容区顶部)。 */
+/** 界面语言选择行(通用设置第一行)。 */
 function LanguageRow() {
   const { t } = useTranslation();
   const language = useSettings((s) => s.language);
   const setLanguage = useSettings((s) => s.setLanguage);
+  const options = [
+    { v: "auto", label: t("settings.language.auto") },
+    // 语言名用各自的原文显示,不随界面语言翻译。
+    { v: "zh", label: "简体中文" },
+    { v: "zh-TW", label: "繁體中文" },
+    { v: "ja", label: "日本語" },
+    { v: "en", label: "English" },
+  ] as const;
+  const current = options.find((o) => o.v === language) ?? options[0];
   return (
     <Flex
       justify="space-between"
@@ -451,16 +463,49 @@ function LanguageRow() {
       <Text fontSize="sm" color="fg.muted" flexShrink={0}>
         {t("settings.language.label")}
       </Text>
-      <NativeSelect.Root size="xs">
-        <NativeSelect.Field
-          value={language}
-          onChange={(e) => setLanguage(e.target.value as Language)}
-        >
-          <option value="auto">{t("settings.language.auto")}</option>
-          <option value="zh">{t("settings.language.zh")}</option>
-          <option value="en">{t("settings.language.en")}</option>
-        </NativeSelect.Field>
-      </NativeSelect.Root>
+      <Menu.Root>
+        <Menu.Trigger asChild>
+          <Button size="xs" variant="outline" borderColor="border.subtle" fontWeight="normal" gap={1}>
+            {current.label}
+            <ChevronDown size={12} opacity={0.55} />
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner zIndex={1000}>
+            <Menu.Content
+              minW="110px"
+              bg="bg"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              borderRadius="10px"
+              boxShadow="md"
+              overflow="hidden"
+              p={1}
+            >
+              <Menu.RadioItemGroup
+                value={language}
+                onValueChange={(e) => setLanguage(e.value as Language)}
+              >
+                {options.map((o) => (
+                  <Menu.RadioItem
+                    key={o.v}
+                    value={o.v}
+                    display="flex"
+                    justifyContent="space-between"
+                    fontSize="sm"
+                    px={2}
+                    py={1.5}
+                    borderRadius="6px"
+                  >
+                    {o.label}
+                    {language === o.v && <Check size={14} aria-hidden />}
+                  </Menu.RadioItem>
+                ))}
+              </Menu.RadioItemGroup>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
     </Flex>
   );
 }
@@ -545,7 +590,6 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               {/* 右侧内容:悬浮滚动条 */}
               <Box flex={1} minW={0} position="relative" display="flex">
                 <Box ref={contentRef} className="no-scrollbar" flex={1} minW={0} p={6} overflowY="auto">
-                  <LanguageRow />
                   {section === "general" && <GeneralSection />}
                   {section === "appearance" && <AppearanceSection />}
                   {section === "sponsor" && <SponsorSection />}
