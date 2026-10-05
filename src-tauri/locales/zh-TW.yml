@@ -1,0 +1,60 @@
+tray:
+  show: 顯示主視窗
+  check_update: 檢查更新
+  quit: 結束
+
+editors:
+  exe_not_found: "程式不存在: %{exe}"
+  not_executable: "不是可執行檔: %{exe}"
+  file_not_found: "檔案不存在: %{path}"
+  launch_failed: "無法啟動 %{exe}: %{error}"
+  launch_failed_no_reason: "無法啟動 %{exe}"
+  not_macos_app: "不是 macOS 應用程式(.app): %{exe}"
+  unsupported_platform: 此平台不支援「以其他程式開啟」
+  fallback_name: 程式
+
+file_assoc:
+  app_data_dir_unavailable: "無法定位應用程式資料目錄: %{error}"
+  exe_path_unavailable: "無法取得程式路徑: %{error}"
+  registry_write_failed: "寫入登錄檔失敗: %{error}"
+  registry_delete_failed: "刪除登錄檔機碼失敗: %{error}"
+  registry_value_delete_failed: "刪除登錄檔值失敗: %{error}"
+  windows_only: 僅支援 Windows
+
+qq_group:
+  fallback_group_name: ①群
+
+read:
+  refuse_non_text: "拒絕讀取非文字檔案: %{path}"
+  not_found: "檔案不存在: %{path}"
+  not_a_file: "不是一般檔案: %{path}"
+  not_utf8: "%{path} 不是 UTF-8 編碼,無法開啟。請將其重新儲存為 UTF-8 編碼(記事本:檔案 > 另存新檔 > 編碼: UTF-8)。"
+  failed: "讀取檔案失敗: %{error}"
+
+write:
+  refuse_non_text: "拒絕寫入非文字檔案: %{path}"
+  failed: "寫入檔案失敗: %{error}"
+
+path:
+  cwd_failed: "無法確定目前目錄: %{error}"
+  invalid_utf8: "路徑不是有效的 UTF-8: %{path}"
+
+image:
+  not_image: "不是圖片檔案: %{path}"
+  not_found: "找不到圖片: %{path}"
+  resolve_failed: "無法解析圖片 %{path}: %{error}"
+  no_parent: "文件沒有父目錄: %{path}"
+  resolve_dir_failed: "無法解析文件所在目錄: %{error}"
+  create_folder_failed: "無法建立 %{folder}: %{error}"
+  no_file_name: "圖片沒有檔名: %{path}"
+  copy_failed: "無法複製圖片到 %{folder}: %{error}"
+
+asset:
+  allow_failed: "無法放行資源檔案 %{path}: %{error}"
+
+updater:
+  download_failed: "下載失敗 (HTTP %{status})"
+  cancelled: 下載已取消
+  incomplete: "下載不完整:預期 %{expected},實際 %{actual}"
+  launch_failed: "無法啟動安裝程式 (錯誤碼: %{code})"
+  windows_only: 僅支援 Windows

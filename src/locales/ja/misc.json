@@ -1,0 +1,21 @@
+{
+  "misc.openFile": "ファイルを開く",
+  "misc.settings": "設定",
+  "misc.recentFiles": "最近使ったファイル",
+  "misc.clearRecent": "最近のファイルを消去",
+  "misc.clear": "消去",
+  "misc.removeFromList": "{{name}} をリストから削除",
+  "misc.remove": "リストから削除",
+  "misc.dateMonthDay": "{{month}}月{{day}}日",
+  "misc.dateFull": "{{year}}/{{month}}/{{day}}",
+  "misc.foundNewVersion": "新しいバージョン {{tag}} があります",
+  "misc.closeUpdateNotice": "更新通知を閉じる",
+  "misc.updatePromptDownload": "新しいバージョンがリリースされました。今すぐダウンロードしますか?",
+  "misc.cancel": "キャンセル",
+  "misc.download": "ダウンロード",
+  "misc.downloading": "ダウンロード中...",
+  "misc.updatePromptInstall": "ダウンロードが完了しました。今すぐインストールしますか?",
+  "misc.restartInstall": "再起動してインストール",
+  "misc.downloadFailedRetry": "ダウンロードに失敗しました。後でもう一度お試しください",
+  "misc.close": "閉じる"
+}

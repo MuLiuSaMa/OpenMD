@@ -1,0 +1,21 @@
+{
+  "misc.openFile": "開啟檔案",
+  "misc.settings": "設定",
+  "misc.recentFiles": "最近開啟",
+  "misc.clearRecent": "清空最近開啟",
+  "misc.clear": "清空",
+  "misc.removeFromList": "從清單移除 {{name}}",
+  "misc.remove": "從清單移除",
+  "misc.dateMonthDay": "{{month}}月{{day}}日",
+  "misc.dateFull": "{{year}}/{{month}}/{{day}}",
+  "misc.foundNewVersion": "發現新版本 {{tag}}",
+  "misc.closeUpdateNotice": "關閉更新提示",
+  "misc.updatePromptDownload": "新版本已發布,是否立即下載?",
+  "misc.cancel": "取消",
+  "misc.download": "下載",
+  "misc.downloading": "正在下載...",
+  "misc.updatePromptInstall": "下載完成,是否立即安裝?",
+  "misc.restartInstall": "重新啟動以安裝",
+  "misc.downloadFailedRetry": "下載失敗,請稍後再試",
+  "misc.close": "關閉"
+}

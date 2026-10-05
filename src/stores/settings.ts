@@ -5,7 +5,7 @@ export type ViewMode = "preview" | "code";
 /** 关闭窗口行为:每次询问 / 隐藏到托盘 / 直接退出。 */
 export type CloseAction = "ask" | "tray" | "exit";
 /** 界面语言:"auto" 跟随系统。 */
-export type Language = "auto" | "zh" | "en";
+export type Language = "auto" | "zh" | "zh-TW" | "ja" | "en";
 
 interface SettingsState {
   /** Body font size in px. */

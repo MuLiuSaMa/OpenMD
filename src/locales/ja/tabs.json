@@ -1,0 +1,22 @@
+{
+  "tabs.openWith.open": "開く",
+  "tabs.openWith.explorer": "エクスプローラー",
+  "tabs.openWith.explorerShort": "エクスプローラー",
+  "tabs.openWith.noEditors": "他のアプリが見つかりません",
+  "tabs.openWith.showInExplorer": "エクスプローラーで表示(ドロップダウンで他のアプリを選択できます)",
+  "tabs.openWith.showInExplorerShort": "エクスプローラーで表示",
+  "tabs.openWith.openWithApp": "{{name}} で開く",
+  "tabs.openWith.chooseOther": "別のアプリで開く",
+  "tabs.tab.close": "タブを閉じる",
+  "tabs.tab.unsavedChanges": "未保存の変更があります",
+  "tabs.closeDialog.title": "OpenMD を閉じる",
+  "tabs.closeDialog.message": "タスクトレイに隠して起動を続けますか、それとも OpenMD を終了しますか?",
+  "tabs.closeDialog.remember": "次回から確認しない(選択を記憶)",
+  "tabs.closeDialog.cancel": "キャンセル",
+  "tabs.closeDialog.hideToTray": "タスクトレイに隠す",
+  "tabs.closeDialog.quit": "終了",
+  "tabs.unsavedDialog.title": "変更内容を保存",
+  "tabs.unsavedDialog.messageSuffix": " に未保存の変更があり、閉じると失われます。保存しますか?",
+  "tabs.unsavedDialog.discard": "保存しない",
+  "tabs.unsavedDialog.save": "保存"
+}

@@ -1,0 +1,22 @@
+{
+  "tabs.openWith.open": "開啟",
+  "tabs.openWith.explorer": "檔案總管",
+  "tabs.openWith.explorerShort": "檔案總管",
+  "tabs.openWith.noEditors": "未偵測到其他程式",
+  "tabs.openWith.showInExplorer": "在檔案總管中顯示(下拉可選擇其他程式)",
+  "tabs.openWith.showInExplorerShort": "在檔案總管中顯示",
+  "tabs.openWith.openWithApp": "以 {{name}} 開啟",
+  "tabs.openWith.chooseOther": "選擇其他程式開啟",
+  "tabs.tab.close": "關閉分頁",
+  "tabs.tab.unsavedChanges": "有未儲存的修改",
+  "tabs.closeDialog.title": "關閉 OpenMD",
+  "tabs.closeDialog.message": "要隱藏到系統列繼續執行，還是結束 OpenMD？",
+  "tabs.closeDialog.remember": "不再提醒，記住我的選擇",
+  "tabs.closeDialog.cancel": "取消",
+  "tabs.closeDialog.hideToTray": "隱藏到系統列",
+  "tabs.closeDialog.quit": "結束",
+  "tabs.unsavedDialog.title": "儲存變更",
+  "tabs.unsavedDialog.messageSuffix": " 有未儲存的變更,關閉後將遺失。是否儲存?",
+  "tabs.unsavedDialog.discard": "不儲存",
+  "tabs.unsavedDialog.save": "儲存"
+}

@@ -2,8 +2,6 @@
   "settings.close": "Close settings",
   "settings.language.label": "Language",
   "settings.language.auto": "System",
-  "settings.language.zh": "Simplified Chinese",
-  "settings.language.en": "English",
   "settings.section.general": "General",
   "settings.section.appearance": "Appearance",
   "settings.section.sponsor": "Sponsor",

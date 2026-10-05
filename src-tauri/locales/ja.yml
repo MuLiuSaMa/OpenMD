@@ -1,0 +1,60 @@
+tray:
+  show: メインウィンドウを表示
+  check_update: アップデートを確認
+  quit: 終了
+
+editors:
+  exe_not_found: "プログラムが存在しません: %{exe}"
+  not_executable: "実行可能ファイルではありません: %{exe}"
+  file_not_found: "ファイルが存在しません: %{path}"
+  launch_failed: "%{exe} を起動できませんでした: %{error}"
+  launch_failed_no_reason: "%{exe} を起動できませんでした"
+  not_macos_app: "macOS アプリ(.app)ではありません: %{exe}"
+  unsupported_platform: このプラットフォームは「別のアプリで開く」に対応していません
+  fallback_name: プログラム
+
+file_assoc:
+  app_data_dir_unavailable: "アプリデータディレクトリを特定できません: %{error}"
+  exe_path_unavailable: "実行ファイルのパスを取得できません: %{error}"
+  registry_write_failed: "レジストリの書き込みに失敗しました: %{error}"
+  registry_delete_failed: "レジストリキーの削除に失敗しました: %{error}"
+  registry_value_delete_failed: "レジストリ値の削除に失敗しました: %{error}"
+  windows_only: Windows のみ対応
+
+qq_group:
+  fallback_group_name: グループ①
+
+read:
+  refuse_non_text: "テキスト以外のファイルの読み取りを拒否しました: %{path}"
+  not_found: "ファイルが存在しません: %{path}"
+  not_a_file: "通常のファイルではありません: %{path}"
+  not_utf8: "%{path} は UTF-8 エンコーディングではないため開けません。UTF-8 として保存し直してください(メモ帳:ファイル > 名前を付けて保存 > 文字コード: UTF-8)。"
+  failed: "ファイルの読み取りに失敗しました: %{error}"
+
+write:
+  refuse_non_text: "テキスト以外のファイルへの書き込みを拒否しました: %{path}"
+  failed: "ファイルの書き込みに失敗しました: %{error}"
+
+path:
+  cwd_failed: "現在のディレクトリを特定できません: %{error}"
+  invalid_utf8: "パスが有効な UTF-8 ではありません: %{path}"
+
+image:
+  not_image: "画像ファイルではありません: %{path}"
+  not_found: "画像が見つかりません: %{path}"
+  resolve_failed: "画像 %{path} を解決できません: %{error}"
+  no_parent: "ドキュメントに親ディレクトリがありません: %{path}"
+  resolve_dir_failed: "ドキュメントのディレクトリを解決できません: %{error}"
+  create_folder_failed: "%{folder} を作成できません: %{error}"
+  no_file_name: "画像にファイル名がありません: %{path}"
+  copy_failed: "画像を %{folder} にコピーできません: %{error}"
+
+asset:
+  allow_failed: "アセットファイル %{path} を許可できません: %{error}"
+
+updater:
+  download_failed: "ダウンロードに失敗しました (HTTP %{status})"
+  cancelled: ダウンロードをキャンセルしました
+  incomplete: "ダウンロードが不完全です: 期待 %{expected}、実際 %{actual}"
+  launch_failed: "インストーラーを起動できませんでした (エラーコード: %{code})"
+  windows_only: Windows のみ対応
