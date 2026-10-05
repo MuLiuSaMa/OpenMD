@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button, Dialog, HStack, Portal, Text, VStack } from "@chakra-ui/react";
 import { useConfirm } from "../stores/confirm";
 
@@ -7,6 +8,7 @@ import { useConfirm } from "../stores/confirm";
  * 替代系统原生 MessageBox,外观与应用其余弹窗保持一致。
  */
 export function UnsavedDialog() {
+  const { t } = useTranslation();
   const open = useConfirm((s) => s.open);
   const fileName = useConfirm((s) => s.fileName);
   const settle = useConfirm((s) => s.settleUnsaved);
@@ -32,13 +34,13 @@ export function UnsavedDialog() {
             w="min(380px, 90vw)"
           >
             <VStack gap={3} align="stretch">
-              <Dialog.Title fontSize="md">保存更改</Dialog.Title>
+              <Dialog.Title fontSize="md">{t("tabs.unsavedDialog.title")}</Dialog.Title>
               <Dialog.Body p={0}>
                 <Text fontSize="sm" color="fg.muted">
                   <Text as="span" fontWeight="medium" color="fg">
                     {fileName}
                   </Text>
-                  {" 有未保存的修改,关闭后将丢失。是否保存?"}
+                  {t("tabs.unsavedDialog.messageSuffix")}
                 </Text>
               </Dialog.Body>
               <Dialog.Footer p={0} pt={1}>
@@ -48,7 +50,7 @@ export function UnsavedDialog() {
                     variant="ghost"
                     onClick={() => settle("discard")}
                   >
-                    不保存
+                    {t("tabs.unsavedDialog.discard")}
                   </Button>
                   <Button
                     size="sm"
@@ -56,7 +58,7 @@ export function UnsavedDialog() {
                     colorPalette="gray"
                     onClick={() => settle("save")}
                   >
-                    保存
+                    {t("tabs.unsavedDialog.save")}
                   </Button>
                 </HStack>
               </Dialog.Footer>

@@ -22,6 +22,7 @@
 //! 同时提取 exe 图标转成 PNG data URL(进程内缓存),排除 OpenMD 自身后按
 //! “推荐在前、名称排序”返回。
 
+use rust_i18n::t;
 use serde::Serialize;
 use std::path::Path;
 
@@ -58,10 +59,10 @@ pub fn detect_editors() -> Vec<EditorApp> {
 pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
     #[cfg(windows)]
     {
-        // Windows 分支的校验顺序与错误文案保持原样。
+        // Windows 分支的校验顺序保持原样。
         let exe_path = Path::new(&exe);
         if !exe_path.is_file() {
-            return Err(format!("程序不存在: {exe}"));
+            return Err(t!("editors.exe_not_found", exe = exe).into_owned());
         }
         let is_exe = exe_path
             .extension()
@@ -69,22 +70,22 @@ pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
             .map(|e| e.eq_ignore_ascii_case("exe"))
             .unwrap_or(false);
         if !is_exe {
-            return Err(format!("不是可执行文件: {exe}"));
+            return Err(t!("editors.not_executable", exe = exe).into_owned());
         }
         if !Path::new(&path).is_file() {
-            return Err(format!("文件不存在: {path}"));
+            return Err(t!("editors.file_not_found", path = path).into_owned());
         }
         std::process::Command::new(exe_path)
             .arg(&path)
             .spawn()
             .map(|_| ())
-            .map_err(|e| format!("无法启动 {exe}: {e}"))
+            .map_err(|e| t!("editors.launch_failed", exe = exe, error = e).into_owned())
     }
 
     #[cfg(target_os = "macos")]
     {
         if !Path::new(&path).is_file() {
-            return Err(format!("文件不存在: {path}"));
+            return Err(t!("editors.file_not_found", path = path).into_owned());
         }
         imp::launch_macos(&exe, &path)
     }
@@ -93,13 +94,14 @@ pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
     {
         let _ = Path::new(&exe);
         let _ = &path;
-        Err("当前平台不支持“用其他程序打开”".to_string())
+        Err(t!("editors.unsupported_platform").into_owned())
     }
 }
 
 #[cfg(windows)]
 mod imp {
     use super::EditorApp;
+    use rust_i18n::t;
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
     use std::sync::{Mutex, OnceLock};
@@ -588,8 +590,8 @@ mod imp {
         let stem = exe
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("程序")
-            .to_string();
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| t!("editors.fallback_name").into_owned());
         match stem.strip_suffix("64") {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => stem,
@@ -862,6 +864,7 @@ mod imp {
 #[cfg(target_os = "macos")]
 mod imp {
     use super::EditorApp;
+    use rust_i18n::t;
     use serde_json::Value;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -942,8 +945,8 @@ mod imp {
         bundle
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("程序")
-            .to_string()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| t!("editors.fallback_name").into_owned())
     }
 
     /// 名称是否落在编辑器白名单里(先过黑名单)。
@@ -1351,13 +1354,13 @@ mod imp {
     /// 的可执行文件;任意其它二进制一律拒绝。
     pub(super) fn resolve_launch_bundle(exe: &str) -> Result<PathBuf, String> {
         let exe_path = Path::new(exe);
-        let bundle =
-            app_bundle_of(exe_path).ok_or_else(|| format!("不是 macOS 应用(.app): {exe}"))?;
+        let bundle = app_bundle_of(exe_path)
+            .ok_or_else(|| t!("editors.not_macos_app", exe = exe).into_owned())?;
         if !bundle.is_dir() {
-            return Err(format!("程序不存在: {exe}"));
+            return Err(t!("editors.exe_not_found", exe = exe).into_owned());
         }
         if exe_path != bundle && !is_bundle_macos_executable(exe_path, &bundle) {
-            return Err(format!("不是可执行文件: {exe}"));
+            return Err(t!("editors.not_executable", exe = exe).into_owned());
         }
         Ok(bundle)
     }
@@ -1371,13 +1374,13 @@ mod imp {
             .arg(&bundle)
             .arg(path)
             .output()
-            .map_err(|e| format!("无法启动 {exe}: {e}"))?;
+            .map_err(|e| t!("editors.launch_failed", exe = exe, error = e).into_owned())?;
         if !out.status.success() {
             let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
             return Err(if err.is_empty() {
-                format!("无法启动 {exe}")
+                t!("editors.launch_failed_no_reason", exe = exe).into_owned()
             } else {
-                format!("无法启动 {exe}: {err}")
+                t!("editors.launch_failed", exe = exe, error = err).into_owned()
             });
         }
         Ok(())

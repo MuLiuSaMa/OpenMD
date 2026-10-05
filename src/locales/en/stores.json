@@ -1,0 +1,8 @@
+{
+  "stores.tabs.home": "Home",
+  "stores.tabs.browserPreviewOpenError": "Browser preview mode can only open files under public/ (e.g. sample.md): {{path}}",
+  "stores.tabs.overwriteDiskChanged": "The file has been modified on disk. Overwrite it with your edits?",
+  "stores.api.openFileDialogTitle": "Open Markdown File",
+  "stores.api.selectImageDialogTitle": "Select Image",
+  "stores.api.imageFilterName": "Images"
+}

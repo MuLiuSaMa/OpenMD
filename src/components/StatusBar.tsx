@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { HStack, Text } from "@chakra-ui/react";
 import { isDirty, useTabs } from "../stores/tabs";
 import { useToc } from "../stores/toc";
 
 export function StatusBar() {
+  const { t } = useTranslation();
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const entries = useToc((s) => s.entries);
@@ -32,17 +34,17 @@ export function StatusBar() {
       <Text truncate maxW="45%">
         {tab.path ?? "OpenMD"}
       </Text>
-      {tab.diskChanged && <Text color="orange.400">文件已在磁盘上修改</Text>}
-      {isDirty(tab) && <Text color="fg">未保存</Text>}
+      {tab.diskChanged && <Text color="orange.400">{t("shell.fileChangedOnDisk")}</Text>}
+      {isDirty(tab) && <Text color="fg">{t("shell.unsaved")}</Text>}
       {tab.path && (
         <>
-          <Text>{wordCount} 词</Text>
-          <Text>{charCount} 字符</Text>
-          <Text>{entries.length} 个标题</Text>
+          <Text>{t("shell.wordCount", { count: wordCount })}</Text>
+          <Text>{t("shell.charCount", { count: charCount })}</Text>
+          <Text>{t("shell.headingCount", { count: entries.length })}</Text>
         </>
       )}
       <Text ms="auto" color="fg.faint">
-        {tab.error ? "打开失败" : "作者：木流"}
+        {tab.error ? t("shell.openFailed") : t("shell.author")}
       </Text>
     </HStack>
   );

@@ -1,0 +1,21 @@
+{
+  "misc.openFile": "Open File",
+  "misc.settings": "Settings",
+  "misc.recentFiles": "Recent Files",
+  "misc.clearRecent": "Clear recent files",
+  "misc.clear": "Clear",
+  "misc.removeFromList": "Remove {{name}} from list",
+  "misc.remove": "Remove from list",
+  "misc.dateMonthDay": "{{month}}/{{day}}",
+  "misc.dateFull": "{{month}}/{{day}}/{{year}}",
+  "misc.foundNewVersion": "New version {{tag}} available",
+  "misc.closeUpdateNotice": "Close update notice",
+  "misc.updatePromptDownload": "A new version is available. Download now?",
+  "misc.cancel": "Cancel",
+  "misc.download": "Download",
+  "misc.downloading": "Downloading...",
+  "misc.updatePromptInstall": "Download complete. Install now?",
+  "misc.restartInstall": "Restart to Install",
+  "misc.downloadFailedRetry": "Download failed, please try again later",
+  "misc.close": "Close"
+}

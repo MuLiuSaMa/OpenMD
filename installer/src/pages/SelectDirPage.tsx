@@ -112,7 +112,7 @@ export default function SelectDirPage({ onDirChange, onValidChange, onShortcutCh
       {/* 空间信息 + 快捷方式 */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24 }}>
         <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.6)" }}>
-          {t("dir_space")}：
+          {t("dir_space")}
           <span style={{ color: "#ffffff", fontWeight: 600 }}>
             {checking ? <span className="space-spinner" /> : formatSize(available)}
           </span>
@@ -124,7 +124,7 @@ export default function SelectDirPage({ onDirChange, onValidChange, onShortcutCh
             onChange={(e) => onShortcutChange?.(e.target.checked)}
           />
           <span className="checkbox-mark" />
-          {t("创建桌面快捷方式")}
+          {t("dir_shortcut")}
         </label>
         <label className="checkbox-label">
           <input
@@ -133,7 +133,7 @@ export default function SelectDirPage({ onDirChange, onValidChange, onShortcutCh
             onChange={(e) => onAssociateChange?.(e.target.checked)}
           />
           <span className="checkbox-mark" />
-          关联 .md 文件
+          {t("dir_associate_md")}
         </label>
       </div>
 

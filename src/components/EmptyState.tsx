@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Box, Button, Flex, IconButton, Text, VStack } from "@chakra-ui/react";
 import { FileText, FolderOpen, Settings, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { useTabs } from "../stores/tabs";
 import { useRecent, type RecentFile } from "../stores/recent";
@@ -16,16 +17,6 @@ function dirOf(path: string): string {
   return idx === -1 ? path : path.slice(0, idx);
 }
 
-/** 今天显示 HH:mm,今年显示 M月d日,更早显示 年/M/d。 */
-function formatTs(ts: number): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  if (d.toDateString() === now.toDateString()) return hm;
-  if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 /**
  * 首页:无历史时整页留白居中显示文字 Logo + 打开按钮;
  * 有打开过的文档后改为左右布局 —— 左侧 Logo + 打开按钮,
@@ -34,6 +25,7 @@ function formatTs(ts: number): string {
  * 在任何背景下都只剩字形本身。Ctrl+O 或拖 .md 进窗口同样可以打开。
  */
 export function EmptyState() {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const openPaths = useTabs((s) => s.openPath);
   const recents = useRecent((s) => s.files);
@@ -43,6 +35,21 @@ export function EmptyState() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // next-themes 首帧 resolvedTheme 为 undefined,默认按暗色处理。
   const isDark = resolvedTheme !== "light";
+
+  /** 今天显示 HH:mm,今年显示 M月d日,更早显示 年/M/d。 */
+  const formatTs = (ts: number): string => {
+    const d = new Date(ts);
+    const now = new Date();
+    const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    if (d.toDateString() === now.toDateString()) return hm;
+    if (d.getFullYear() === now.getFullYear())
+      return t("misc.dateMonthDay", { month: d.getMonth() + 1, day: d.getDate() });
+    return t("misc.dateFull", {
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+      day: d.getDate(),
+    });
+  };
 
   const handleClick = async () => {
     try {
@@ -85,7 +92,7 @@ export function EmptyState() {
       onClick={handleClick}
     >
       <FolderOpen size={15} />
-      打开文件
+      {t("misc.openFile")}
     </Button>
   );
 
@@ -120,7 +127,7 @@ export function EmptyState() {
       onClick={() => setSettingsOpen(true)}
     >
       <Settings size={15} />
-      设置
+      {t("misc.settings")}
     </Button>
   );
 
@@ -171,12 +178,12 @@ export function EmptyState() {
         <Box w="min(460px, 42vw)">
           <Flex align="center" mb={2} px={3}>
             <Text fontSize="xs" color="fg.muted" letterSpacing="wider">
-              最近打开
+              {t("misc.recentFiles")}
             </Text>
             <Button
               ms="auto"
-              aria-label="清空最近打开"
-              title="清空最近打开"
+              aria-label={t("misc.clearRecent")}
+              title={t("misc.clearRecent")}
               variant="ghost"
               size="xs"
               h="20px"
@@ -185,7 +192,7 @@ export function EmptyState() {
               _hover={{ color: "fg", bg: "bg.subtle" }}
               onClick={() => clearRecents()}
             >
-              清空
+              {t("misc.clear")}
             </Button>
           </Flex>
           <Box position="relative">
@@ -231,8 +238,8 @@ export function EmptyState() {
                   </Text>
                   <IconButton
                     className="recent-remove"
-                    aria-label={`从列表移除 ${f.name}`}
-                    title="从列表移除"
+                    aria-label={t("misc.removeFromList", { name: f.name })}
+                    title={t("misc.remove")}
                     variant="ghost"
                     size="xs"
                     flexShrink={0}

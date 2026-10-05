@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { HStack, IconButton } from "@chakra-ui/react";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -10,6 +11,7 @@ import { IN_TAURI, IS_MACOS } from "../utils/platform";
  * 浏览器预览环境不渲染。
  */
 export function WindowControls() {
+  const { t } = useTranslation();
   const [maximized, setMaximized] = useState(false);
 
   // 跟踪最大化状态以切换图标;窗口尺寸变化时重新查询。
@@ -45,18 +47,18 @@ export function WindowControls() {
 
   return (
     <HStack gap={1}>
-      <IconButton aria-label="最小化" title="最小化" {...mono} onClick={() => void getCurrentWindow().minimize()}>
+      <IconButton aria-label={t("shell.minimize")} title={t("shell.minimize")} {...mono} onClick={() => void getCurrentWindow().minimize()}>
         <Minus size={15} />
       </IconButton>
       <IconButton
-        aria-label={maximized ? "向下还原" : "最大化"}
-        title={maximized ? "向下还原" : "最大化"}
+        aria-label={maximized ? t("shell.restore") : t("shell.maximize")}
+        title={maximized ? t("shell.restore") : t("shell.maximize")}
         {...mono}
         onClick={() => void getCurrentWindow().toggleMaximize()}
       >
         {maximized ? <Copy size={13} /> : <Square size={13} />}
       </IconButton>
-      <IconButton aria-label="关闭" title="关闭" {...mono} onClick={() => void getCurrentWindow().close()}>
+      <IconButton aria-label={t("shell.close")} title={t("shell.close")} {...mono} onClick={() => void getCurrentWindow().close()}>
         <X size={16} />
       </IconButton>
     </HStack>

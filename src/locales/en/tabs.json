@@ -1,0 +1,22 @@
+{
+  "tabs.openWith.open": "Open",
+  "tabs.openWith.explorer": "File Explorer",
+  "tabs.openWith.explorerShort": "Explorer",
+  "tabs.openWith.noEditors": "No other apps detected",
+  "tabs.openWith.showInExplorer": "Show in Explorer (use the dropdown to pick another app)",
+  "tabs.openWith.showInExplorerShort": "Show in Explorer",
+  "tabs.openWith.openWithApp": "Open with {{name}}",
+  "tabs.openWith.chooseOther": "Open with another app",
+  "tabs.tab.close": "Close tab",
+  "tabs.tab.unsavedChanges": "Unsaved changes",
+  "tabs.closeDialog.title": "Close OpenMD",
+  "tabs.closeDialog.message": "Hide to the system tray and keep running, or quit OpenMD?",
+  "tabs.closeDialog.remember": "Don't ask again, remember my choice",
+  "tabs.closeDialog.cancel": "Cancel",
+  "tabs.closeDialog.hideToTray": "Hide to tray",
+  "tabs.closeDialog.quit": "Quit",
+  "tabs.unsavedDialog.title": "Save changes",
+  "tabs.unsavedDialog.messageSuffix": " has unsaved changes that will be lost if closed. Save?",
+  "tabs.unsavedDialog.discard": "Don't save",
+  "tabs.unsavedDialog.save": "Save"
+}

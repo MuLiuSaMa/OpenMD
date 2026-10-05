@@ -7,6 +7,7 @@ import {
   HStack,
   IconButton,
   Image,
+  NativeSelect,
   Portal,
   Text,
   VStack,
@@ -14,6 +15,7 @@ import {
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useTheme } from "next-themes";
+import { useTranslation } from "react-i18next";
 import { FaQq } from "react-icons/fa6";
 import { RiBilibiliFill, RiTiktokFill } from "react-icons/ri";
 import {
@@ -27,7 +29,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useSettings } from "../stores/settings";
+import { useSettings, type Language } from "../stores/settings";
 import { useUpdate } from "../stores/update";
 import { isMdAssociated, registerMdAssociation, unregisterMdAssociation } from "../tauri/api";
 import { FloatingScrollbar } from "./FloatingScrollbar";
@@ -36,15 +38,16 @@ import { QqGroupSection } from "./QqGroupSection";
 type SectionId = "general" | "appearance" | "sponsor" | "qq" | "about";
 
 // 图标兼容 lucide 与 react-icons 两类组件
-const SECTIONS: { id: SectionId; label: string; icon: ComponentType<{ size?: number | string }> }[] = [
-  { id: "general", label: "通用", icon: SlidersHorizontal },
-  { id: "appearance", label: "外观", icon: Palette },
-  { id: "sponsor", label: "赞助", icon: Heart },
-  { id: "qq", label: "QQ群", icon: FaQq },
-  { id: "about", label: "关于", icon: Info },
+const SECTIONS: { id: SectionId; labelKey: string; icon: ComponentType<{ size?: number | string }> }[] = [
+  { id: "general", labelKey: "settings.section.general", icon: SlidersHorizontal },
+  { id: "appearance", labelKey: "settings.section.appearance", icon: Palette },
+  { id: "sponsor", labelKey: "settings.section.sponsor", icon: Heart },
+  { id: "qq", labelKey: "settings.section.qq", icon: FaQq },
+  { id: "about", labelKey: "settings.section.about", icon: Info },
 ];
 
 function GeneralSection() {
+  const { t } = useTranslation();
   // 文件关联状态:null = 未知/浏览器预览(不渲染该行)
   const [assoc, setAssoc] = useState<boolean | null>(null);
   const [assocBusy, setAssocBusy] = useState(false);
@@ -84,14 +87,14 @@ function GeneralSection() {
         borderColor="border.subtle"
       >
         <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-          关闭窗口
+          {t("settings.general.closeWindow")}
         </Text>
         <HStack gap={1}>
           {(
             [
-              { v: "ask", label: "每次询问" },
-              { v: "tray", label: "隐藏到托盘" },
-              { v: "exit", label: "直接退出" },
+              { v: "ask", label: t("settings.general.closeAction.ask") },
+              { v: "tray", label: t("settings.general.closeAction.tray") },
+              { v: "exit", label: t("settings.general.closeAction.exit") },
             ] as const
           ).map((opt) => (
             <Button
@@ -115,10 +118,10 @@ function GeneralSection() {
           borderColor="border.subtle"
         >
           <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-            文件关联
+            {t("settings.general.fileAssociation")}
           </Text>
           <HStack gap={3}>
-            <Text fontSize="sm">{assoc ? "已关联 .md 等文件" : "未关联"}</Text>
+            <Text fontSize="sm">{assoc ? t("settings.general.associated") : t("settings.general.notAssociated")}</Text>
             <Button
               size="xs"
               variant={assoc ? "outline" : "subtle"}
@@ -126,7 +129,7 @@ function GeneralSection() {
               disabled={assocBusy}
               onClick={() => void toggleAssociation()}
             >
-              {assoc ? "取消关联" : "设为默认"}
+              {assoc ? t("settings.general.disassociate") : t("settings.general.setDefault")}
             </Button>
           </HStack>
         </Flex>
@@ -136,6 +139,7 @@ function GeneralSection() {
 }
 
 function AppearanceSection() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const { fontSize, setFontSize } = useSettings();
 
@@ -143,14 +147,14 @@ function AppearanceSection() {
     <VStack align="stretch" gap={0}>
       <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
         <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-          主题
+          {t("settings.appearance.theme")}
         </Text>
         <HStack gap={1}>
           {(
             [
-              { v: "light", label: "亮色" },
-              { v: "dark", label: "暗色" },
-              { v: "system", label: "跟随系统" },
+              { v: "light", label: t("settings.appearance.themeLight") },
+              { v: "dark", label: t("settings.appearance.themeDark") },
+              { v: "system", label: t("settings.appearance.themeSystem") },
             ] as const
           ).map((opt) => (
             <Button
@@ -167,16 +171,16 @@ function AppearanceSection() {
 
       <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
         <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-          正文字号 (13-28)
+          {t("settings.appearance.fontSize")}
         </Text>
         <HStack gap={1}>
-          <IconButton aria-label="减小字号" variant="ghost" size="xs" onClick={() => setFontSize(fontSize - 1)}>
+          <IconButton aria-label={t("settings.appearance.fontSizeDecrease")} variant="ghost" size="xs" onClick={() => setFontSize(fontSize - 1)}>
             <Minus size={13} />
           </IconButton>
           <Text w="30px" textAlign="center" fontSize="sm">
             {fontSize}
           </Text>
-          <IconButton aria-label="增大字号" variant="ghost" size="xs" onClick={() => setFontSize(fontSize + 1)}>
+          <IconButton aria-label={t("settings.appearance.fontSizeIncrease")} variant="ghost" size="xs" onClick={() => setFontSize(fontSize + 1)}>
             <Plus size={13} />
           </IconButton>
         </HStack>
@@ -186,10 +190,11 @@ function AppearanceSection() {
 }
 
 function SponsorSection() {
+  const { t } = useTranslation();
   return (
     <VStack align="center" gap={4} pt={2}>
       <Text fontSize="sm" color="fg.muted" textAlign="center">
-        如果 OpenMD 对你有帮助,欢迎请作者喝杯咖啡~
+        {t("settings.sponsor.invite")}
       </Text>
       <Flex gap={6} wrap="wrap" justify="center">
         <VStack
@@ -199,8 +204,8 @@ function SponsorSection() {
           borderColor="border.subtle"
           borderRadius="12px"
         >
-          <Image src="/alipay.webp" alt="支付宝收款码" w="150px" h="150px" borderRadius="8px" objectFit="cover" />
-          <Text fontSize="sm">支付宝</Text>
+          <Image src="/alipay.webp" alt={t("settings.sponsor.alipayQr")} w="150px" h="150px" borderRadius="8px" objectFit="cover" />
+          <Text fontSize="sm">{t("settings.sponsor.alipay")}</Text>
         </VStack>
         <VStack
           gap={2}
@@ -209,34 +214,16 @@ function SponsorSection() {
           borderColor="border.subtle"
           borderRadius="12px"
         >
-          <Image src="/wechat.png" alt="微信收款码" w="150px" h="150px" borderRadius="8px" objectFit="cover" />
-          <Text fontSize="sm">微信</Text>
+          <Image src="/wechat.png" alt={t("settings.sponsor.wechatQr")} w="150px" h="150px" borderRadius="8px" objectFit="cover" />
+          <Text fontSize="sm">{t("settings.sponsor.wechat")}</Text>
         </VStack>
       </Flex>
     </VStack>
   );
 }
 
-/** 作者的平台链接(与 NexBox 相同)。 */
-const AUTHOR_LINKS = [
-  {
-    label: "小黑盒",
-    url: "https://xiaoheihe.cn/app/user/profile/56380800",
-    icon: <img src="/icons/xiaoheihe.webp" alt="小黑盒" style={{ width: "20px", height: "20px", objectFit: "contain" }} />,
-  },
-  {
-    label: "Bilibili",
-    url: "https://space.bilibili.com/1614951812",
-    icon: <RiBilibiliFill size={19} color="#00A1D6" />,
-  },
-  {
-    label: "抖音",
-    url: "https://www.douyin.com/user/MS4wLjABAAAAytD1zP6zVeXgPQuG-PWHq4AhsZz9zNXPcJap2JVaoG88Ani9tmBj0FtH7DLrQWsH",
-    icon: <RiTiktokFill size={18} color="currentColor" />,
-  },
-];
-
 function AboutSection() {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const [version, setVersion] = useState("1.0.2");
@@ -257,6 +244,25 @@ function AboutSection() {
       window.open(url, "_blank");
     }
   };
+
+  /** 作者的平台链接(与 NexBox 相同)。 */
+  const authorLinks = [
+    {
+      label: t("settings.about.xiaoheihe"),
+      url: "https://xiaoheihe.cn/app/user/profile/56380800",
+      icon: <img src="/icons/xiaoheihe.webp" alt={t("settings.about.xiaoheihe")} style={{ width: "20px", height: "20px", objectFit: "contain" }} />,
+    },
+    {
+      label: "Bilibili",
+      url: "https://space.bilibili.com/1614951812",
+      icon: <RiBilibiliFill size={19} color="#00A1D6" />,
+    },
+    {
+      label: t("settings.about.douyin"),
+      url: "https://www.douyin.com/user/MS4wLjABAAAAytD1zP6zVeXgPQuG-PWHq4AhsZz9zNXPcJap2JVaoG88Ani9tmBj0FtH7DLrQWsH",
+      icon: <RiTiktokFill size={18} color="currentColor" />,
+    },
+  ];
 
   const checking = lastCheck === "checking";
 
@@ -280,7 +286,7 @@ function AboutSection() {
       {/* 版本行(与外观页同款样式) */}
       <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
         <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-          版本
+          {t("settings.about.version")}
         </Text>
         <HStack gap={3}>
           <Text fontSize="sm">{version}</Text>
@@ -293,7 +299,7 @@ function AboutSection() {
             disabled={checking}
           >
             <RefreshCw size={12} className={checking ? "animate-spin" : undefined} />
-            {checking ? "检查中..." : "检查更新"}
+            {checking ? t("settings.about.checking") : t("settings.about.checkUpdate")}
           </Button>
         </HStack>
       </Flex>
@@ -302,31 +308,31 @@ function AboutSection() {
       {(lastCheck === "available" || phase === "downloading" || phase === "complete" || phase === "error") && (
         <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
           <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-            更新
+            {t("settings.about.update")}
           </Text>
           <Box flex={1} minW={0}>
             <Flex justify="flex-end" align="center" gap={3}>
               {phase === "prompt" && (
                 <>
-                  <Text fontSize="sm">发现新版本 {latestTag}</Text>
+                  <Text fontSize="sm">{t("settings.about.newVersion", { tag: latestTag })}</Text>
                   <Button size="xs" variant="subtle" gap={1} onClick={() => void startDownload()}>
                     <Download size={12} />
-                    下载
+                    {t("settings.about.download")}
                   </Button>
                 </>
               )}
               {phase === "complete" && (
                 <>
-                  <Text fontSize="sm">下载完成</Text>
+                  <Text fontSize="sm">{t("settings.about.downloadComplete")}</Text>
                   <Button size="xs" variant="subtle" gap={1} onClick={() => void install()}>
                     <RefreshCw size={12} />
-                    重启安装
+                    {t("settings.about.restartInstall")}
                   </Button>
                 </>
               )}
               {phase === "error" && (
                 <Text fontSize="sm" color="red.400" wordBreak="break-all">
-                  {errorMsg || "下载失败,请稍后再试"}
+                  {errorMsg || t("settings.about.downloadFailed")}
                 </Text>
               )}
             </Flex>
@@ -334,7 +340,7 @@ function AboutSection() {
               <VStack align="stretch" gap={1} ml="auto" w="240px">
                 <HStack justify="space-between">
                   <Text fontSize="xs" color="fg.muted">
-                    正在下载 {latestTag}...
+                    {t("settings.about.downloading", { tag: latestTag })}
                   </Text>
                   <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
                     {Math.round(progress)}%
@@ -358,19 +364,19 @@ function AboutSection() {
       {lastCheck === "latest" && (
         <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
           <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-            更新
+            {t("settings.about.update")}
           </Text>
-          <Text fontSize="sm">已是最新版本</Text>
+          <Text fontSize="sm">{t("settings.about.upToDate")}</Text>
         </Flex>
       )}
 
       {lastCheck === "error" && phase !== "error" && (
         <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
           <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-            更新
+            {t("settings.about.update")}
           </Text>
           <Text fontSize="sm" color="red.400">
-            检查失败,请稍后再试
+            {t("settings.about.checkFailed")}
           </Text>
         </Flex>
       )}
@@ -378,7 +384,7 @@ function AboutSection() {
       {/* 作者行(与外观页同款样式) */}
       <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
         <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-          作者
+          {t("settings.about.author")}
         </Text>
         <HStack gap={4}>
           <HStack gap={2}>
@@ -394,16 +400,16 @@ function AboutSection() {
             >
               <img
                 src="/logo/MuLiuSaMa.webp"
-                alt="木流"
+                alt={t("settings.about.authorName")}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             </Box>
             <Text fontSize="sm" fontWeight="medium">
-              木流
+              {t("settings.about.authorName")}
             </Text>
           </HStack>
           <Flex align="center" gap={2}>
-            {AUTHOR_LINKS.map((p) => (
+            {authorLinks.map((p) => (
               <Box
                 key={p.label}
                 w="28px"
@@ -428,11 +434,43 @@ function AboutSection() {
   );
 }
 
+/** 界面语言选择行(设置弹窗内容区顶部)。 */
+function LanguageRow() {
+  const { t } = useTranslation();
+  const language = useSettings((s) => s.language);
+  const setLanguage = useSettings((s) => s.setLanguage);
+  return (
+    <Flex
+      justify="space-between"
+      align="center"
+      gap={6}
+      py={3}
+      borderBottomWidth="1px"
+      borderColor="border.subtle"
+    >
+      <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+        {t("settings.language.label")}
+      </Text>
+      <NativeSelect.Root size="xs">
+        <NativeSelect.Field
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as Language)}
+        >
+          <option value="auto">{t("settings.language.auto")}</option>
+          <option value="zh">{t("settings.language.zh")}</option>
+          <option value="en">{t("settings.language.en")}</option>
+        </NativeSelect.Field>
+      </NativeSelect.Root>
+    </Flex>
+  );
+}
+
 /**
  * 设置弹窗:左侧导航(通用/外观/赞助/关于) + 右侧内容。
  * 背景半透明模糊;由首页左下角与顶栏"主题"左侧的设置按钮唤起。
  */
 export function SettingsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const [section, setSection] = useState<SectionId>("general");
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -460,7 +498,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           >
             <Dialog.CloseTrigger asChild>
               <IconButton
-                aria-label="关闭设置"
+                aria-label={t("settings.close")}
                 variant="ghost"
                 size="xs"
                 position="absolute"
@@ -498,7 +536,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                       onClick={() => setSection(s.id)}
                     >
                       <s.icon size={15} />
-                      {s.label}
+                      {t(s.labelKey)}
                     </Button>
                   );
                 })}
@@ -507,6 +545,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               {/* 右侧内容:悬浮滚动条 */}
               <Box flex={1} minW={0} position="relative" display="flex">
                 <Box ref={contentRef} className="no-scrollbar" flex={1} minW={0} p={6} overflowY="auto">
+                  <LanguageRow />
                   {section === "general" && <GeneralSection />}
                   {section === "appearance" && <AppearanceSection />}
                   {section === "sponsor" && <SponsorSection />}

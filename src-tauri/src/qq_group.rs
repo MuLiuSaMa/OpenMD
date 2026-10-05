@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -39,7 +40,7 @@ fn fallback_payload() -> QqGroupsPayload {
     QqGroupsPayload {
         update_time: String::new(),
         groups: vec![QqGroup {
-            name: "①群".to_string(),
+            name: t!("qq_group.fallback_group_name").into_owned(),
             number: "1028672542".to_string(),
             link: "https://qm.qq.com/q/arZ3C1IL6w".to_string(),
             icon: "https://gitee.com/muliuawa/nexbox/raw/master/qq_icons/group1.png".to_string(),
