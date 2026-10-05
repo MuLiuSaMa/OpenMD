@@ -1,0 +1,57 @@
+tray:
+  show: 显示主窗口
+  check_update: 检查更新
+  quit: 退出
+
+editors:
+  exe_not_found: "程序不存在: %{exe}"
+  not_executable: "不是可执行文件: %{exe}"
+  file_not_found: "文件不存在: %{path}"
+  launch_failed: "无法启动 %{exe}: %{error}"
+  fallback_name: 程序
+
+file_assoc:
+  app_data_dir_unavailable: "无法定位应用数据目录: %{error}"
+  exe_path_unavailable: "无法获取程序路径: %{error}"
+  registry_write_failed: "写入注册表失败: %{error}"
+  registry_delete_failed: "删除注册表失败: %{error}"
+  registry_value_delete_failed: "删除注册表值失败: %{error}"
+  windows_only: 仅支持 Windows
+
+qq_group:
+  fallback_group_name: ①群
+
+read:
+  refuse_non_text: "拒绝读取非文本文件: %{path}"
+  not_found: "文件不存在: %{path}"
+  not_a_file: "不是常规文件: %{path}"
+  not_utf8: "%{path} 不是 UTF-8 编码,无法打开。请将其重新保存为 UTF-8 编码(记事本:文件 > 另存为 > 编码: UTF-8)。"
+  failed: "读取文件失败: %{error}"
+
+write:
+  refuse_non_text: "拒绝写入非文本文件: %{path}"
+  failed: "写入文件失败: %{error}"
+
+path:
+  cwd_failed: "无法确定当前目录: %{error}"
+  invalid_utf8: "路径不是有效的 UTF-8: %{path}"
+
+image:
+  not_image: "不是图片文件: %{path}"
+  not_found: "找不到图片: %{path}"
+  resolve_failed: "无法解析图片 %{path}: %{error}"
+  no_parent: "文档没有父目录: %{path}"
+  resolve_dir_failed: "无法解析文档所在目录: %{error}"
+  create_folder_failed: "无法创建 %{folder}: %{error}"
+  no_file_name: "图片没有文件名: %{path}"
+  copy_failed: "无法复制图片到 %{folder}: %{error}"
+
+asset:
+  allow_failed: "无法放行资源文件 %{path}: %{error}"
+
+updater:
+  download_failed: "下载失败 (HTTP %{status})"
+  cancelled: 下载已取消
+  incomplete: "下载不完整: 预期 %{expected},实际 %{actual}"
+  launch_failed: "无法启动安装程序 (错误码: %{code})"
+  windows_only: 仅支持 Windows

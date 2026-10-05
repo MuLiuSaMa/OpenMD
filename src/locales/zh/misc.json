@@ -1,0 +1,21 @@
+{
+  "misc.openFile": "打开文件",
+  "misc.settings": "设置",
+  "misc.recentFiles": "最近打开",
+  "misc.clearRecent": "清空最近打开",
+  "misc.clear": "清空",
+  "misc.removeFromList": "从列表移除 {{name}}",
+  "misc.remove": "从列表移除",
+  "misc.dateMonthDay": "{{month}}月{{day}}日",
+  "misc.dateFull": "{{year}}/{{month}}/{{day}}",
+  "misc.foundNewVersion": "发现新版本 {{tag}}",
+  "misc.closeUpdateNotice": "关闭更新提示",
+  "misc.updatePromptDownload": "新版本已发布,是否立即下载?",
+  "misc.cancel": "取消",
+  "misc.download": "下载",
+  "misc.downloading": "正在下载...",
+  "misc.updatePromptInstall": "下载完成,是否立即安装?",
+  "misc.restartInstall": "重启安装",
+  "misc.downloadFailedRetry": "下载失败,请稍后再试",
+  "misc.close": "关闭"
+}

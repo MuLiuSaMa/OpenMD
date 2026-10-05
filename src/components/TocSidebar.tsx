@@ -1,9 +1,11 @@
 import { useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Box, Text, VStack } from "@chakra-ui/react";
 import { setActiveHeading, useToc } from "../stores/toc";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 
 export function TocSidebar({ open }: { open: boolean }) {
+  const { t } = useTranslation();
   const { entries, activeId } = useToc();
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -69,11 +71,11 @@ export function TocSidebar({ open }: { open: boolean }) {
         px={2}
         py={3}
         as="nav"
-        aria-label="目录"
+        aria-label={t("shell.toc")}
       >
         {entries.length === 0 ? (
           <Text fontSize="sm" color="fg.faint" px={2}>
-            无标题
+            {t("shell.noHeadings")}
           </Text>
         ) : (
           list

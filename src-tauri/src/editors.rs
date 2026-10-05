@@ -13,6 +13,7 @@
 //! “@file,-idx” 间接字符串经 SHLoadIndirectString 还原),同时提取 exe 图标转成
 //! PNG data URL(进程内缓存),排除 OpenMD 自身后按“推荐在前、名称排序”返回。
 
+use rust_i18n::t;
 use serde::Serialize;
 use std::path::Path;
 
@@ -44,7 +45,7 @@ pub fn detect_editors() -> Vec<EditorApp> {
 pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
     let exe_path = Path::new(&exe);
     if !exe_path.is_file() {
-        return Err(format!("程序不存在: {exe}"));
+        return Err(t!("editors.exe_not_found", exe = exe).into_owned());
     }
     let is_exe = exe_path
         .extension()
@@ -52,21 +53,22 @@ pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
         .map(|e| e.eq_ignore_ascii_case("exe"))
         .unwrap_or(false);
     if !is_exe {
-        return Err(format!("不是可执行文件: {exe}"));
+        return Err(t!("editors.not_executable", exe = exe).into_owned());
     }
     if !Path::new(&path).is_file() {
-        return Err(format!("文件不存在: {path}"));
+        return Err(t!("editors.file_not_found", path = path).into_owned());
     }
     std::process::Command::new(exe_path)
         .arg(&path)
         .spawn()
         .map(|_| ())
-        .map_err(|e| format!("无法启动 {exe}: {e}"))
+        .map_err(|e| t!("editors.launch_failed", exe = exe, error = e).into_owned())
 }
 
 #[cfg(windows)]
 mod imp {
     use super::EditorApp;
+    use rust_i18n::t;
     use std::collections::HashMap;
     use std::path::{Path, PathBuf};
     use std::sync::{Mutex, OnceLock};
@@ -555,8 +557,8 @@ mod imp {
         let stem = exe
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("程序")
-            .to_string();
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| t!("editors.fallback_name").into_owned());
         match stem.strip_suffix("64") {
             Some(s) if !s.is_empty() => s.to_string(),
             _ => stem,

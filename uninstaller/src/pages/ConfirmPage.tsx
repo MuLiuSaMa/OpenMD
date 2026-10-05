@@ -13,7 +13,7 @@ export default function ConfirmPage({ onStart }: ConfirmPageProps) {
   useEffect(() => {
     invoke<{ install_dir: string }>("get_install_info")
       .then((info) => setInstallDir(info.install_dir))
-      .catch(() => setInstallDir("未知"));
+      .catch(() => setInstallDir(t("unknown")));
   }, []);
 
   return (

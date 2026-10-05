@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Box, HStack, IconButton, Text } from "@chakra-ui/react";
 import { AppWindow, ChevronDown, FolderOpen, X } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-import { HOME_TAB_ID, isDirty, useTabs } from "../stores/tabs";
+import { HOME_TAB_ID, isDirty, tabName, useTabs } from "../stores/tabs";
 import { detectEditors, openFileWith, type EditorApp } from "../tauri/api";
 import { ContextMenu, type MenuEntry } from "./ContextMenu";
 import folderExplorerIcon from "../assets/folder-explorer.png";
@@ -60,6 +61,7 @@ function ExplorerIcon({ size = 16 }: { size?: number }) {
 }
 
 export function TabBar() {
+  const { t } = useTranslation();
   const { tabs, activeId, setActive, requestCloseTab } = useTabs();
   // 菜单只存位置与数据,条目每次渲染时用最新 selection 重建,
   // 这样 keepOpen 下点选后 ✓ 与主按钮实时跟随。
@@ -140,7 +142,7 @@ export function TabBar() {
 
     const entries: MenuEntry[] = [];
     if (editors.length === 0) {
-      entries.push({ type: "item", label: "未检测到其他程序", disabled: true, onClick: () => {} });
+      entries.push({ type: "item", label: t("tabs.openWith.noEditors"), disabled: true, onClick: () => {} });
     }
     entries.push(
       ...editors.map(
@@ -158,7 +160,7 @@ export function TabBar() {
       { type: "sep" },
       {
         type: "item",
-        label: "文件资源管理器",
+        label: t("tabs.openWith.explorer"),
         icon: <ExplorerIcon size={16} />,
         active: selection?.kind === "explorer",
         keepOpen: true,
@@ -171,16 +173,16 @@ export function TabBar() {
   // 主按钮外观跟随当前选择:未选择 → 打开(回退为资源管理器定位);
   // 资源管理器 / 某个程序 → 显示对应图标与名称。
   let mainIcon = <FolderOpen size={13} />;
-  let mainLabel = "打开";
-  let mainTitle = "在资源管理器中显示(下拉可选择其他程序)";
+  let mainLabel = t("tabs.openWith.open");
+  let mainTitle = t("tabs.openWith.showInExplorer");
   if (selection?.kind === "explorer") {
     mainIcon = <ExplorerIcon size={14} />;
-    mainLabel = "资源管理器";
-    mainTitle = "在资源管理器中显示";
+    mainLabel = t("tabs.openWith.explorerShort");
+    mainTitle = t("tabs.openWith.showInExplorerShort");
   } else if (selection?.kind === "editor" && selection.name) {
     mainIcon = <EditorIcon icon={selection.icon} size={14} />;
     mainLabel = selection.name;
-    mainTitle = `用 ${selection.name} 打开`;
+    mainTitle = t("tabs.openWith.openWithApp", { name: selection.name });
   }
 
   return (
@@ -236,7 +238,7 @@ export function TabBar() {
               color={active ? "fg" : "fg.muted"}
               borderBottomWidth="1px"
               borderBottomColor={active ? "transparent" : "border.subtle"}
-              title={tab.path ?? tab.name}
+              title={tab.path ?? tabName(tab)}
             >
               {tab.diskChanged && (
                 <Box
@@ -257,15 +259,15 @@ export function TabBar() {
                   border="1.5px solid"
                   borderColor="fg"
                   flexShrink={0}
-                  title="有未保存的修改"
+                  title={t("tabs.tab.unsavedChanges")}
                 />
               )}
               <Text as="span" truncate>
-                {tab.name}
+                {tabName(tab)}
               </Text>
               {tab.id !== HOME_TAB_ID && (
                 <IconButton
-                  aria-label="关闭标签"
+                  aria-label={t("tabs.tab.close")}
                   size="2xs"
                   variant="ghost"
                   flexShrink={0}
@@ -328,8 +330,8 @@ export function TabBar() {
             cursor={hasFile ? "pointer" : "default"}
             _hover={hasFile ? { bg: "bg.subtle" } : {}}
             opacity={hasFile ? 1 : 0.45}
-            aria-label="选择其他程序打开"
-            title="选择其他程序打开"
+            aria-label={t("tabs.openWith.chooseOther")}
+            title={t("tabs.openWith.chooseOther")}
             onClick={() => {
               if (hasFile) void openWithMenu();
             }}

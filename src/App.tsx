@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
@@ -35,6 +36,7 @@ function isMarkdownPath(p: string): boolean {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const openPath = useTabs((s) => s.openPath);
@@ -80,8 +82,8 @@ export default function App() {
     });
     const unlistenTrayCheck = listen("tray-check-update", () => {
       void useUpdate.getState().check().then((result) => {
-        if (result === "latest") showNotice("当前已是最新版本");
-        else if (result === "error") showNotice("检查更新失败，请稍后重试");
+        if (result === "latest") showNotice(t("shell.upToDate"));
+        else if (result === "error") showNotice(t("shell.updateCheckFailed"));
         // available 时更新弹窗自动弹出,无需额外提示
       });
     });
@@ -303,7 +305,7 @@ export default function App() {
           boxShadow="lg"
           zIndex={100}
         >
-          {openError} — 点击关闭
+          {t("shell.openErrorClickToDismiss", { error: openError })}
         </Flex>
       )}
       <UpdatePopup />

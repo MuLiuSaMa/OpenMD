@@ -1,0 +1,22 @@
+{
+  "tabs.openWith.open": "打开",
+  "tabs.openWith.explorer": "文件资源管理器",
+  "tabs.openWith.explorerShort": "资源管理器",
+  "tabs.openWith.noEditors": "未检测到其他程序",
+  "tabs.openWith.showInExplorer": "在资源管理器中显示(下拉可选择其他程序)",
+  "tabs.openWith.showInExplorerShort": "在资源管理器中显示",
+  "tabs.openWith.openWithApp": "用 {{name}} 打开",
+  "tabs.openWith.chooseOther": "选择其他程序打开",
+  "tabs.tab.close": "关闭标签",
+  "tabs.tab.unsavedChanges": "有未保存的修改",
+  "tabs.closeDialog.title": "关闭 OpenMD",
+  "tabs.closeDialog.message": "要隐藏到系统托盘继续运行，还是退出 OpenMD？",
+  "tabs.closeDialog.remember": "不再提醒，记住我的选择",
+  "tabs.closeDialog.cancel": "取消",
+  "tabs.closeDialog.hideToTray": "隐藏到托盘",
+  "tabs.closeDialog.quit": "退出",
+  "tabs.unsavedDialog.title": "保存更改",
+  "tabs.unsavedDialog.messageSuffix": " 有未保存的修改,关闭后将丢失。是否保存?",
+  "tabs.unsavedDialog.discard": "不保存",
+  "tabs.unsavedDialog.save": "保存"
+}

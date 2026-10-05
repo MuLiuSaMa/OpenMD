@@ -1,0 +1,57 @@
+tray:
+  show: Show Main Window
+  check_update: Check for Updates
+  quit: Quit
+
+editors:
+  exe_not_found: "Program not found: %{exe}"
+  not_executable: "Not an executable: %{exe}"
+  file_not_found: "File not found: %{path}"
+  launch_failed: "Failed to launch %{exe}: %{error}"
+  fallback_name: Program
+
+file_assoc:
+  app_data_dir_unavailable: "Cannot locate the app data directory: %{error}"
+  exe_path_unavailable: "Cannot get the executable path: %{error}"
+  registry_write_failed: "Failed to write the registry: %{error}"
+  registry_delete_failed: "Failed to delete the registry key: %{error}"
+  registry_value_delete_failed: "Failed to delete the registry value: %{error}"
+  windows_only: Windows only
+
+qq_group:
+  fallback_group_name: "Group ①"
+
+read:
+  refuse_non_text: "Refusing to read a non-text file: %{path}"
+  not_found: "File not found: %{path}"
+  not_a_file: "Not a file: %{path}"
+  not_utf8: "%{path} is not UTF-8 encoded, so it cannot be opened. Re-save it as UTF-8 (in Notepad: File > Save As > Encoding: UTF-8)."
+  failed: "Failed to read file: %{error}"
+
+write:
+  refuse_non_text: "Refusing to write a non-text file: %{path}"
+  failed: "Failed to write file: %{error}"
+
+path:
+  cwd_failed: "Failed to determine current directory: %{error}"
+  invalid_utf8: "Path is not valid UTF-8: %{path}"
+
+image:
+  not_image: "Not an image file: %{path}"
+  not_found: "Image not found: %{path}"
+  resolve_failed: "Failed to resolve image %{path}: %{error}"
+  no_parent: "Document has no parent directory: %{path}"
+  resolve_dir_failed: "Failed to resolve the document's directory: %{error}"
+  create_folder_failed: "Failed to create %{folder}: %{error}"
+  no_file_name: "Image has no file name: %{path}"
+  copy_failed: "Failed to copy image into %{folder}: %{error}"
+
+asset:
+  allow_failed: "Failed to allow asset %{path}: %{error}"
+
+updater:
+  download_failed: "Download failed (HTTP %{status})"
+  cancelled: Download cancelled
+  incomplete: "Download incomplete: expected %{expected}, got %{actual}"
+  launch_failed: "Failed to launch installer (error: %{code})"
+  windows_only: Only Windows is supported

@@ -3,6 +3,10 @@
   "app_name": "OpenMD",
   "app_description": "Game Toolkit for Modern Players",
 
+  "close": "Close",
+  "minimize": "Minimize",
+  "unknown": "Unknown",
+
   "confirm_title": "Uninstall OpenMD",
   "confirm_desc": "Are you sure you want to uninstall OpenMD? This will remove all program files, shortcuts, and system registry entries.",
   "confirm_warning": "This action cannot be undone. Please make sure you have backed up important data.",

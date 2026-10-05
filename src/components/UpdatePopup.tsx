@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { Box, Button, HStack, IconButton, Text } from "@chakra-ui/react";
 import { Download, RefreshCw, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { viewInAnimation } from "../theme/theme";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { useUpdate } from "../stores/update";
@@ -12,6 +13,7 @@ import { useUpdate } from "../stores/update";
  * 入场复用 view-in 动画(淡入上浮)。
  */
 export function UpdatePopup() {
+  const { t } = useTranslation();
   const { phase, tag, body, progress, errorMsg, hide, startDownload, cancelDownload, install, discard } =
     useUpdate();
   const logRef = useRef<HTMLDivElement>(null);
@@ -37,11 +39,11 @@ export function UpdatePopup() {
         <HStack gap={2} minW={0}>
           <Download size={16} style={{ flexShrink: 0 }} />
           <Text fontSize="sm" fontWeight="semibold" truncate>
-            发现新版本 {tag}
+            {t("misc.foundNewVersion", { tag })}
           </Text>
         </HStack>
         {phase !== "downloading" && (
-          <IconButton aria-label="关闭更新提示" variant="ghost" size="xs" flexShrink={0} onClick={hide}>
+          <IconButton aria-label={t("misc.closeUpdateNotice")} variant="ghost" size="xs" flexShrink={0} onClick={hide}>
             <X size={14} />
           </IconButton>
         )}
@@ -70,15 +72,15 @@ export function UpdatePopup() {
       {phase === "prompt" && (
         <>
           <Text fontSize="xs" color="fg.muted" mt={2}>
-            新版本已发布,是否立即下载?
+            {t("misc.updatePromptDownload")}
           </Text>
           <HStack mt={3} justify="flex-end" gap={2}>
             <Button size="xs" variant="ghost" onClick={hide}>
-              取消
+              {t("misc.cancel")}
             </Button>
             <Button size="xs" variant="solid" gap={1} onClick={() => void startDownload()}>
               <Download size={12} />
-              下载
+              {t("misc.download")}
             </Button>
           </HStack>
         </>
@@ -88,7 +90,7 @@ export function UpdatePopup() {
         <Box mt={3}>
           <HStack justify="space-between" mb={1}>
             <Text fontSize="xs" color="fg.muted">
-              正在下载...
+              {t("misc.downloading")}
             </Text>
             <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
               {Math.round(progress)}%
@@ -105,7 +107,7 @@ export function UpdatePopup() {
           </Box>
           <HStack mt={3} justify="flex-end">
             <Button size="xs" variant="ghost" onClick={() => void cancelDownload()}>
-              取消
+              {t("misc.cancel")}
             </Button>
           </HStack>
         </Box>
@@ -114,15 +116,15 @@ export function UpdatePopup() {
       {phase === "complete" && (
         <>
           <Text fontSize="xs" color="fg.muted" mt={2}>
-            下载完成,是否立即安装?
+            {t("misc.updatePromptInstall")}
           </Text>
           <HStack mt={3} justify="flex-end" gap={2}>
             <Button size="xs" variant="ghost" onClick={() => void discard()}>
-              取消
+              {t("misc.cancel")}
             </Button>
             <Button size="xs" variant="solid" gap={1} onClick={() => void install()}>
               <RefreshCw size={12} />
-              重启安装
+              {t("misc.restartInstall")}
             </Button>
           </HStack>
         </>
@@ -131,11 +133,11 @@ export function UpdatePopup() {
       {phase === "error" && (
         <>
           <Text fontSize="xs" color="red.400" mt={2} wordBreak="break-all">
-            {errorMsg || "下载失败,请稍后再试"}
+            {errorMsg || t("misc.downloadFailedRetry")}
           </Text>
           <HStack mt={3} justify="flex-end">
             <Button size="xs" variant="ghost" onClick={hide}>
-              关闭
+              {t("misc.close")}
             </Button>
           </HStack>
         </>

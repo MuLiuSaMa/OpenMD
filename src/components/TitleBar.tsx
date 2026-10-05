@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Box, Button, Grid, HStack, IconButton, Input, Separator } from "@chakra-ui/react";
 import { useTheme } from "next-themes";
 import { FolderOpen, Minus, Moon, PanelLeft, Plus, Settings, StretchHorizontal, Sun } from "lucide-react";
@@ -10,6 +11,7 @@ import { SettingsModal } from "./SettingsModal";
 import { WindowControls } from "./WindowControls";
 
 function ThemeToggle() {
+  const { t } = useTranslation();
   const { resolvedTheme, setTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   // 主题切换用 View Transition 交叉淡入,避免全文档逐元素颜色过渡卡顿。
@@ -18,8 +20,8 @@ function ThemeToggle() {
   };
   return (
     <IconButton
-      aria-label="切换主题"
-      title="切换亮/暗主题"
+      aria-label={t("shell.toggleTheme")}
+      title={t("shell.toggleThemeTitle")}
       variant="ghost"
       size="sm"
       onClick={toggle}
@@ -30,6 +32,7 @@ function ThemeToggle() {
 }
 
 export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void }) {
+  const { t } = useTranslation();
   const { fontSize, setFontSize, tocOpen, toggleToc, fullWidth, toggleFullWidth } = useSettings();
   const openPaths = useTabs((s) => s.openPath);
   const { resolvedTheme } = useTheme();
@@ -101,22 +104,22 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
 
         <HStack gap={1} justifySelf="center" data-tauri-drag-region="">
           <Button
-            aria-label="打开文件 (Ctrl+O)"
-            title="打开文件 (Ctrl+O)"
+            aria-label={t("shell.openFileShortcut")}
+            title={t("shell.openFileShortcut")}
             variant="ghost"
             size="sm"
             gap={1.5}
             onClick={handleOpen}
           >
             <FolderOpen size={15} />
-            打开文件
+            {t("shell.openFile")}
           </Button>
 
           <Separator orientation="vertical" h="20px" />
 
           <IconButton
-            aria-label="减小字号"
-            title="减小字号 (Ctrl+-)"
+            aria-label={t("shell.decreaseFontSize")}
+            title={t("shell.decreaseFontSizeShortcut")}
             variant="ghost"
             size="sm"
             onClick={() => setFontSize(fontSize - 1)}
@@ -133,8 +136,8 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
             }}
-            aria-label="字号"
-            title="输入字号 (13-28),回车生效"
+            aria-label={t("shell.fontSize")}
+            title={t("shell.fontSizeInputTitle")}
             w="44px"
             h="26px"
             size="xs"
@@ -155,8 +158,8 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             }}
           />
           <IconButton
-            aria-label="增大字号"
-            title="增大字号 (Ctrl+=)"
+            aria-label={t("shell.increaseFontSize")}
+            title={t("shell.increaseFontSizeShortcut")}
             variant="ghost"
             size="sm"
             onClick={() => setFontSize(fontSize + 1)}
@@ -167,39 +170,39 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           <Separator orientation="vertical" h="20px" />
 
           <Button
-            aria-label="目录栏"
-            title="目录栏 (Ctrl+B)"
+            aria-label={t("shell.tocBar")}
+            title={t("shell.tocBarShortcut")}
             variant={tocOpen ? "subtle" : "ghost"}
             size="sm"
             gap={1.5}
             onClick={toggleToc}
           >
             <PanelLeft size={15} />
-            目录
+            {t("shell.toc")}
           </Button>
 
           <Button
-            aria-label="内容铺满"
-            title="内容铺满窗口 / 居中显示"
+            aria-label={t("shell.fullWidth")}
+            title={t("shell.fullWidthTitle")}
             variant={fullWidth ? "subtle" : "ghost"}
             size="sm"
             gap={1.5}
             onClick={toggleFullWidth}
           >
             <StretchHorizontal size={15} />
-            铺满
+            {t("shell.fullWidthLabel")}
           </Button>
 
           <Button
-            aria-label="设置"
-            title="设置"
+            aria-label={t("shell.settings")}
+            title={t("shell.settings")}
             variant="ghost"
             size="sm"
             gap={1.5}
             onClick={() => setSettingsOpen(true)}
           >
             <Settings size={15} />
-            设置
+            {t("shell.settings")}
           </Button>
 
           <ThemeToggle />

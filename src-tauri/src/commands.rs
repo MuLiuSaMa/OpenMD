@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use rust_i18n::t;
 use tauri::{AppHandle, Manager};
 
 /// 前端诊断日志入口(追加到 app_data_dir/assoc-debug.log,排查文件关联转发链路)
@@ -28,15 +29,15 @@ pub fn read_markdown_file(path: String) -> Result<String, String> {
     let p = Path::new(&path);
 
     if !has_allowed_extension(p) {
-        return Err(format!("Refusing to read a non-text file: {}", path));
+        return Err(t!("read.refuse_non_text", path = path).into_owned());
     }
 
     if !p.exists() {
-        return Err(format!("File not found: {}", path));
+        return Err(t!("read.not_found", path = path).into_owned());
     }
 
     if !p.is_file() {
-        return Err(format!("Not a file: {}", path));
+        return Err(t!("read.not_a_file", path = path).into_owned());
     }
 
     fs::read_to_string(p).map_err(|e| {
@@ -45,13 +46,9 @@ pub fn read_markdown_file(path: String) -> Result<String, String> {
         // dropdown that produces a BOM. The raw io error ("stream did not
         // contain valid UTF-8") tells a user nothing they can act on.
         if e.kind() == std::io::ErrorKind::InvalidData {
-            format!(
-                "{} is not UTF-8 encoded, so it cannot be opened. \
-                 Re-save it as UTF-8 (in Notepad: File > Save As > Encoding: UTF-8).",
-                path
-            )
+            t!("read.not_utf8", path = path).into_owned()
         } else {
-            format!("Failed to read file: {}", e)
+            t!("read.failed", error = e).into_owned()
         }
     })
 }
@@ -66,14 +63,14 @@ pub fn write_markdown_file(path: String, content: String) -> Result<(), String> 
     let p = Path::new(&path);
 
     if !has_allowed_extension(p) {
-        return Err(format!("Refusing to write a non-text file: {}", path));
+        return Err(t!("write.refuse_non_text", path = path).into_owned());
     }
 
     if p.exists() && !p.is_file() {
-        return Err(format!("Not a file: {}", path));
+        return Err(t!("read.not_a_file", path = path).into_owned());
     }
 
-    fs::write(p, content).map_err(|e| format!("Failed to write file: {}", e))
+    fs::write(p, content).map_err(|e| t!("write.failed", error = e).into_owned())
 }
 
 /// The current user's home directory.
@@ -132,7 +129,7 @@ pub fn resolve_path(path: String) -> Result<String, String> {
         p.to_path_buf()
     } else {
         std::env::current_dir()
-            .map_err(|e| format!("Failed to determine current directory: {}", e))?
+            .map_err(|e| t!("path.cwd_failed", error = e).into_owned())?
             .join(p)
     };
 
@@ -141,7 +138,7 @@ pub fn resolve_path(path: String) -> Result<String, String> {
         .unwrap_or(absolute)
         .to_str()
         .map(|s| strip_verbatim_prefix(s.to_string()))
-        .ok_or_else(|| format!("Path is not valid UTF-8: {}", path))
+        .ok_or_else(|| t!("path.invalid_utf8", path = path).into_owned())
 }
 
 /// Whether a path exists on disk. Used by the local-file-link handler to
@@ -194,34 +191,34 @@ pub struct ImportedImage {
 pub fn import_image(document_path: String, source_path: String) -> Result<ImportedImage, String> {
     let source = Path::new(&source_path);
     if !has_allowed_image_extension(source) {
-        return Err(format!("Not an image file: {}", source_path));
+        return Err(t!("image.not_image", path = source_path).into_owned());
     }
     if !source.is_file() {
-        return Err(format!("Image not found: {}", source_path));
+        return Err(t!("image.not_found", path = source_path).into_owned());
     }
     // Canonicalize so symlinks and `..` cannot redirect the copy elsewhere.
     let source =
-        fs::canonicalize(source).map_err(|e| format!("Failed to resolve image {}: {}", source_path, e))?;
+        fs::canonicalize(source).map_err(|e| t!("image.resolve_failed", path = source_path, error = e).into_owned())?;
 
     let doc_dir = Path::new(&document_path)
         .parent()
-        .ok_or_else(|| format!("Document has no parent directory: {}", document_path))?;
+        .ok_or_else(|| t!("image.no_parent", path = document_path).into_owned())?;
     let doc_dir = fs::canonicalize(doc_dir)
-        .map_err(|e| format!("Failed to resolve the document's directory: {}", e))?;
+        .map_err(|e| t!("image.resolve_dir_failed", error = e).into_owned())?;
 
     let target = if source.starts_with(&doc_dir) {
         source.clone()
     } else {
         let folder = doc_dir.join(IMAGE_FOLDER);
         fs::create_dir_all(&folder)
-            .map_err(|e| format!("Failed to create {}: {}", folder.display(), e))?;
+            .map_err(|e| t!("image.create_folder_failed", folder = folder.display(), error = e).into_owned())?;
         let name = source
             .file_name()
-            .ok_or_else(|| format!("Image has no file name: {}", source_path))?;
+            .ok_or_else(|| t!("image.no_file_name", path = source_path).into_owned())?;
         let (target, needs_copy) = unique_target(&folder, name, &source);
         if needs_copy {
             fs::copy(&source, &target)
-                .map_err(|e| format!("Failed to copy image into {}: {}", folder.display(), e))?;
+                .map_err(|e| t!("image.copy_failed", folder = folder.display(), error = e).into_owned())?;
         }
         target
     };
@@ -320,7 +317,7 @@ pub fn allow_assets(
     for p in &allowed {
         scope
             .allow_file(p)
-            .map_err(|e| format!("Failed to allow asset {}: {}", p.display(), e))?;
+            .map_err(|e| t!("asset.allow_failed", path = p.display(), error = e).into_owned())?;
     }
     Ok(rejected)
 }
@@ -435,6 +432,7 @@ mod fs_scope_tests {
 
     #[test]
     fn read_rejects_a_non_text_path_before_touching_disk() {
+        rust_i18n::set_locale("en");
         // The path does not exist; the extension guard must fire first, so the
         // error is the refusal, never a "file not found".
         let err = read_markdown_file("/home/u/.ssh/id_rsa".into()).unwrap_err();
@@ -457,6 +455,7 @@ mod fs_scope_tests {
 
     #[test]
     fn a_non_utf8_file_reports_the_encoding_rather_than_the_io_error() {
+        rust_i18n::set_locale("en");
         // Notepad offers UTF-16 in the same Save As dropdown that produces a
         // BOM. `read_to_string` rejects it with "stream did not contain valid
         // UTF-8", which tells a user nothing actionable.
@@ -481,6 +480,7 @@ mod write_tests {
 
     #[test]
     fn write_refuses_a_non_text_path_before_touching_disk() {
+        rust_i18n::set_locale("en");
         // The path does not exist; the extension guard must fire first, so the
         // error is the refusal, never an io error.
         let err = write_markdown_file("/home/u/a.sh".into(), "x".into()).unwrap_err();
@@ -500,6 +500,7 @@ mod write_tests {
 
     #[test]
     fn write_refuses_a_directory_with_a_text_extension() {
+        rust_i18n::set_locale("en");
         // A directory named `folder.md` passes the extension guard; the
         // is_file check is what keeps the io error meaningful.
         let dir = scratch("write");

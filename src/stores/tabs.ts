@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import i18n from "i18next";
 import {
   allowAssets,
   readMarkdownFile,
@@ -78,7 +79,7 @@ async function loadContent(path: string): Promise<string> {
   }
   const resp = await fetch(baseName(path));
   if (!resp.ok) {
-    throw new Error(`浏览器预览模式只能打开 public/ 下的文件(如 sample.md):${path}`);
+    throw new Error(i18n.t("stores.tabs.browserPreviewOpenError", { path }));
   }
   return resp.text();
 }
@@ -88,7 +89,8 @@ export const HOME_TAB_ID = "home";
 const HOME_TAB: Tab = {
   id: HOME_TAB_ID,
   path: null,
-  name: "首页",
+  // 翻译 key:渲染处(标签栏等)用 tabName() 显示;文件标签仍存真实文件名。
+  name: "stores.tabs.home",
   content: "",
   draft: null,
   lastSavedAt: 0,
@@ -96,6 +98,11 @@ const HOME_TAB: Tab = {
   scrollY: 0,
   error: null,
 };
+
+/** 标签显示名:首页标签存的是翻译 key,按当前语言解析;文件标签返回真实文件名。 */
+export function tabName(tab: Pick<Tab, "name" | "path">): string {
+  return tab.path === null ? i18n.t(tab.name) : tab.name;
+}
 
 /** Native confirm dialog; window.confirm in the plain-browser dev mode. */
 async function confirmDialog(message: string): Promise<boolean> {
@@ -239,9 +246,7 @@ export const useTabs = create<TabsState>((set, get) => ({
     const edited = tab.draft ?? tab.content;
     if (edited === tab.content) return;
     if (tab.diskChanged) {
-      const ok = await confirmDialog(
-        "文件已在磁盘上被修改。仍要用编辑内容覆盖吗?",
-      );
+      const ok = await confirmDialog(i18n.t("stores.tabs.overwriteDiskChanged"));
       if (!ok) return;
     }
     // Textareas hand the value back with LF endings; write the file back in

@@ -6,6 +6,7 @@ use std::io::Write;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures_util::StreamExt;
+use rust_i18n::t;
 use reqwest::Client;
 use tauri::{AppHandle, Emitter, Window};
 
@@ -34,7 +35,7 @@ pub async fn download_update(url: String, file_name: String, window: Window) -> 
 
     let total_size = response.content_length().unwrap_or(0);
     if !response.status().is_success() {
-        return Err(format!("Download failed (HTTP {})", response.status().as_u16()));
+        return Err(t!("updater.download_failed", status = response.status().as_u16()).into_owned());
     }
 
     let download_path = match dirs::download_dir() {
@@ -61,7 +62,7 @@ pub async fn download_update(url: String, file_name: String, window: Window) -> 
             if CANCEL_DOWNLOAD.load(Ordering::SeqCst) {
                 drop(file);
                 let _ = std::fs::remove_file(&download_path);
-                return Err("Download cancelled".to_string());
+                return Err(t!("updater.cancelled").into_owned());
             }
             let chunk = chunk.map_err(|e| e.to_string())?;
             file.write_all(&chunk).map_err(|e| e.to_string())?;
@@ -89,7 +90,12 @@ pub async fn download_update(url: String, file_name: String, window: Window) -> 
         if total_size > 0 && downloaded != total_size {
             drop(file);
             let _ = std::fs::remove_file(&download_path);
-            return Err(format!("Download incomplete: expected {total_size}, got {downloaded}"));
+            return Err(t!(
+                "updater.incomplete",
+                expected = total_size,
+                actual = downloaded
+            )
+            .into_owned());
         }
     }
 
@@ -130,14 +136,14 @@ fn launch_installer(file_path: &str) -> Result<(), String> {
         )
     };
     if hinst as isize <= 32 {
-        return Err(format!("Failed to launch installer (error: {})", hinst as isize));
+        return Err(t!("updater.launch_failed", code = hinst as isize).into_owned());
     }
     Ok(())
 }
 
 #[cfg(not(target_os = "windows"))]
 fn launch_installer(_file_path: &str) -> Result<(), String> {
-    Err("Only Windows is supported".to_string())
+    Err(t!("updater.windows_only").into_owned())
 }
 
 /// 启动安装向导并退出应用
