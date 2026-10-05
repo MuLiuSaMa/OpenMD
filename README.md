@@ -100,7 +100,22 @@ pnpm tauri build
 # 产物：src-tauri/target/release/openmd.exe
 ```
 
-### 安装包（安装器 + 卸载器）
+### macOS
+
+主程序基于 Tauri，本体跨平台，Mac 上可直接构建原生 `.app`：
+
+```bash
+# 前置：xcode-select --install；Rust（rustup）；Node ≥20 + pnpm
+source "$HOME/.cargo/env"
+pnpm install
+pnpm tauri build
+# 产物：src-tauri/target/release/bundle/macos/OpenMD.app
+```
+
+详见 [docs/BUILD-macOS.md](docs/BUILD-macOS.md)（含依赖、安装、DMG 打包与
+macOS 适配改动说明）。
+
+### 安装包（安装器 + 卸载器，Windows）
 
 发布走自定义安装向导，需依次构建三个工程：
 

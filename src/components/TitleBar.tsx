@@ -7,6 +7,7 @@ import { useSettings } from "../stores/settings";
 import { openFileDialog } from "../tauri/api";
 import { useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
+import { IS_MACOS } from "../utils/platform";
 import { SettingsModal } from "./SettingsModal";
 import { WindowControls } from "./WindowControls";
 
@@ -72,7 +73,9 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
       as="header"
       h="46px"
       px={4}
-      paddingLeft="3px"
+      // macOS 的 titleBarStyle:"Overlay" 会把红绿灯按钮叠在内容左上角,
+      // 这里留出空档避免压住 Logo;其他平台保持原来的 3px。
+      paddingLeft={IS_MACOS ? "78px" : "3px"}
       flexShrink={0}
       borderBottomWidth="1px"
       borderColor="border.subtle"

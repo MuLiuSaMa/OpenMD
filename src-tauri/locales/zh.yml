@@ -8,6 +8,9 @@ editors:
   not_executable: "不是可执行文件: %{exe}"
   file_not_found: "文件不存在: %{path}"
   launch_failed: "无法启动 %{exe}: %{error}"
+  launch_failed_no_reason: "无法启动 %{exe}"
+  not_macos_app: "不是 macOS 应用(.app): %{exe}"
+  unsupported_platform: 当前平台不支持“用其他程序打开”
   fallback_name: 程序
 
 file_assoc:

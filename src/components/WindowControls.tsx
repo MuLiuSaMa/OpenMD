@@ -3,9 +3,7 @@ import { useTranslation } from "react-i18next";
 import { HStack, IconButton } from "@chakra-ui/react";
 import { Copy, Minus, Square, X } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-
-/** True when running inside the Tauri webview (false in a plain browser). */
-const IN_TAURI = "__TAURI_INTERNALS__" in window;
+import { IN_TAURI, IS_MACOS } from "../utils/platform";
 
 /**
  * 窗口控制按钮:最小化 / 最大化(还原) / 关闭。
@@ -30,6 +28,8 @@ export function WindowControls() {
   }, []);
 
   if (!IN_TAURI) return null;
+  // macOS 走 titleBarStyle:"Overlay",由系统绘制红绿灯按钮,不再自绘一套。
+  if (IS_MACOS) return null;
 
   // 全局 colorPalette 已是中性灰,这里再强制黑白反色,确保窗口按钮永远是黑白色。
   const mono = {

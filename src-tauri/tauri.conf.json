@@ -33,7 +33,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": [],
+    "targets": ["app"],
+    "category": "Utility",
+    "shortDescription": "简洁 美观 高效的 Markdown 查看器",
+    "copyright": "OpenMD",
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
     "icon": [
       "icons/128x128@2x.png",
       "icons/128x128.png",

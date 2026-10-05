@@ -8,6 +8,9 @@ editors:
   not_executable: "Not an executable: %{exe}"
   file_not_found: "File not found: %{path}"
   launch_failed: "Failed to launch %{exe}: %{error}"
+  launch_failed_no_reason: "Failed to launch %{exe}"
+  not_macos_app: "Not a macOS app (.app): %{exe}"
+  unsupported_platform: "“Open with another app” is not supported on this platform"
   fallback_name: Program
 
 file_assoc:

@@ -185,6 +185,10 @@ mod tests {
     use super::WatchSet;
     use std::path::{Path, PathBuf};
 
+    // 用 POSIX 绝对路径而不是字面量 "C:\\docs\\a.md"：Windows 路径在 Unix 上
+    // 没有分隔符，`Path::parent()` 会返回 `Some("")`，断言必然失败。WatchSet
+    // 的逻辑只依赖 parent()/相等比较，与平台无关，所以这些用例本身就应当是
+    // 平台中立的。
     fn p(s: &str) -> PathBuf {
         PathBuf::from(s)
     }
@@ -192,42 +196,42 @@ mod tests {
     #[test]
     fn first_file_in_a_directory_starts_the_watch_and_the_last_stops_it() {
         let mut set = WatchSet::default();
-        assert_eq!(set.add(p("C:\\docs\\a.md")), Some(p("C:\\docs")));
-        assert_eq!(set.add(p("C:\\docs\\b.md")), None, "second file in the same dir reuses the watch");
-        assert_eq!(set.remove(Path::new("C:\\docs\\a.md")), None, "one file still needs the dir");
-        assert_eq!(set.remove(Path::new("C:\\docs\\b.md")), Some(p("C:\\docs")));
+        assert_eq!(set.add(p("/docs/a.md")), Some(p("/docs")));
+        assert_eq!(set.add(p("/docs/b.md")), None, "second file in the same dir reuses the watch");
+        assert_eq!(set.remove(Path::new("/docs/a.md")), None, "one file still needs the dir");
+        assert_eq!(set.remove(Path::new("/docs/b.md")), Some(p("/docs")));
         assert!(set.is_empty());
     }
 
     #[test]
     fn directories_are_counted_independently() {
         let mut set = WatchSet::default();
-        assert_eq!(set.add(p("C:\\docs\\a.md")), Some(p("C:\\docs")));
-        assert_eq!(set.add(p("C:\\notes\\n.md")), Some(p("C:\\notes")));
-        assert_eq!(set.remove(Path::new("C:\\docs\\a.md")), Some(p("C:\\docs")));
+        assert_eq!(set.add(p("/docs/a.md")), Some(p("/docs")));
+        assert_eq!(set.add(p("/notes/n.md")), Some(p("/notes")));
+        assert_eq!(set.remove(Path::new("/docs/a.md")), Some(p("/docs")));
         assert!(!set.is_empty());
-        assert!(set.watched(Path::new("C:\\notes\\n.md")).is_some());
+        assert!(set.watched(Path::new("/notes/n.md")).is_some());
     }
 
     #[test]
     fn adding_twice_and_removing_the_unknown_are_no_ops() {
         let mut set = WatchSet::default();
-        assert_eq!(set.add(p("C:\\docs\\a.md")), Some(p("C:\\docs")));
-        assert_eq!(set.add(p("C:\\docs\\a.md")), None);
+        assert_eq!(set.add(p("/docs/a.md")), Some(p("/docs")));
+        assert_eq!(set.add(p("/docs/a.md")), None);
         // Still exactly one reference: removing it releases the directory.
-        assert_eq!(set.remove(Path::new("C:\\docs\\a.md")), Some(p("C:\\docs")));
-        assert_eq!(set.remove(Path::new("C:\\docs\\never.md")), None);
-        assert_eq!(set.remove(Path::new("C:\\docs\\a.md")), None);
+        assert_eq!(set.remove(Path::new("/docs/a.md")), Some(p("/docs")));
+        assert_eq!(set.remove(Path::new("/docs/never.md")), None);
+        assert_eq!(set.remove(Path::new("/docs/a.md")), None);
     }
 
     #[test]
     fn only_watched_files_match_and_the_stored_path_is_returned() {
         let mut set = WatchSet::default();
-        set.add(p("C:\\docs\\a.md"));
-        assert_eq!(set.watched(Path::new("C:\\docs\\a.md")), Some(&p("C:\\docs\\a.md")));
-        assert_eq!(set.watched(Path::new("C:\\docs\\other.md")), None, "a sibling's change is noise");
+        set.add(p("/docs/a.md"));
+        assert_eq!(set.watched(Path::new("/docs/a.md")), Some(&p("/docs/a.md")));
+        assert_eq!(set.watched(Path::new("/docs/other.md")), None, "a sibling's change is noise");
         set.clear();
         assert!(set.is_empty());
-        assert_eq!(set.watched(Path::new("C:\\docs\\a.md")), None);
+        assert_eq!(set.watched(Path::new("/docs/a.md")), None);
     }
 }
