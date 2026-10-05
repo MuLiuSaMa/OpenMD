@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "title": "OpenMD",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 640,
+        "minHeight": 480,
+        "center": true,
+        "visible": false,
+        "decorations": true,
+        "devtools": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "acceptFirstMouse": true,
+        "trafficLightPosition": { "x": 14, "y": 16 }
+      }
+    ]
+  }
+}
