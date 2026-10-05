@@ -108,6 +108,29 @@ fn collect_md_args<I: Iterator<Item = String>>(args: I) -> Vec<String> {
         .collect()
 }
 
+/// macOS:把 Launch Services 传来的 `file://` URL 转成本地路径,只保留
+/// 存在的 Markdown 文件(过滤规则与 [`collect_md_args`] 一致)。
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+fn collect_md_urls(urls: Vec<tauri::Url>) -> Vec<String> {
+    urls.into_iter()
+        .filter_map(|u| u.to_file_path().ok())
+        .map(|p| p.to_string_lossy().into_owned())
+        .filter(|a| {
+            Path::new(a)
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(|e| {
+                    matches!(
+                        e.to_ascii_lowercase().as_str(),
+                        "md" | "markdown" | "mdown" | "mkd"
+                    )
+                })
+                .unwrap_or(false)
+        })
+        .filter(|a| Path::new(a).is_file())
+        .collect()
+}
+
 /// 隐藏主窗口到系统托盘(前端关闭询问对话框选择"隐藏到托盘"时调用)。
 #[tauri::command]
 fn hide_to_tray(app: AppHandle) {
@@ -184,11 +207,20 @@ pub fn run() {
             qq_group::get_qq_group_icon,
         ])
         .on_window_event(|window, event| {
-            // 拦截所有关闭请求(点 X / Alt+F4):交给前端弹出询问对话框
-            // (隐藏到托盘 还是 退出)。
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.emit("close-requested", ());
+                // macOS 惯例:点红灯只是关掉窗口,应用继续驻留,由 Dock/托盘唤回。
+                // Windows/Linux 保持原行为:交给前端弹出询问对话框
+                // (隐藏到托盘 还是 退出)。
+                #[cfg(target_os = "macos")]
+                {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    api.prevent_close();
+                    let _ = window.emit("close-requested", ());
+                }
             }
         })
         .setup(|app| {
@@ -211,6 +243,20 @@ pub fn run() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // macOS 的"用 OpenMD 打开"不是命令行参数,而是 Launch Services
+            // 投递的 `RunEvent::Opened`。双击 .md / 拖到 Dock 图标都走这里,
+            // 并且可能在 webview 就绪之前到达,所以同样走缓冲 + 事件通知。
+            #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
+            if let tauri::RunEvent::Opened { urls } = event {
+                let paths = collect_md_urls(urls);
+                debug_log(app, &format!("RunEvent::Opened paths: {paths:?}"));
+                push_opened_files(app, paths);
+                tray::show_main_window(app);
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "android")))]
+            let _ = (app, event);
+        });
 }

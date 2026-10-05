@@ -1,6 +1,6 @@
 //! “用其他程序打开”菜单的数据源:扫描系统里能打开 Markdown 的程序。
 //!
-//! 两个来源取并集:
+//! Windows 两个来源取并集:
 //! 1. `.md`(及 markdown/mdown/mkd)的关联信息:HKCR 与 HKCU FileExts 下的
 //!    默认 ProgID / OpenWithList / OpenWithProgids / UserChoice——即系统
 //!    “打开方式”的推荐栏加上用户历史上用过的程序。标记为 `recommended`,
@@ -9,9 +9,18 @@
 //!    关联 .md 的 IDE 也能出现。全量枚举会把播放器、网盘之类无关应用带进来,
 //!    所以这里按 exe 文件名关键字过滤(见 [`imp::EDITOR_EXE_KEYWORDS`])。
 //!
-//! 每个条目解析出真实 exe 路径与友好名称(FriendlyAppName / FriendlyTypeName,
-//! “@file,-idx” 间接字符串经 SHLoadIndirectString 还原),同时提取 exe 图标转成
-//! PNG data URL(进程内缓存),排除 OpenMD 自身后按“推荐在前、名称排序”返回。
+//! macOS 没有注册表,实现见下方 `#[cfg(target_os = "macos")] mod imp`:扫描
+//! `/Applications`、`/System/Applications`、`~/Applications`、
+//! `/System/Library/CoreServices` 下的 `.app`,读 `Contents/Info.plist` 的
+//! `CFBundleDocumentTypes` 判断应用是否真的声明了 Markdown,并叠加 Launch
+//! Services 的默认 Markdown 处理程序(用户偏好 plist)。`exe` 取 bundle 内
+//! `Contents/MacOS` 下的可执行文件,取不到时退回 `.app` 本身,交给
+//! `/usr/bin/open -a` 启动;图标不提取(前端回退通用图标)。
+//!
+//! 每个条目解析出真实 exe 路径与友好名称(Windows 的 FriendlyAppName /
+//! FriendlyTypeName,“@file,-idx” 间接字符串经 SHLoadIndirectString 还原),
+//! 同时提取 exe 图标转成 PNG data URL(进程内缓存),排除 OpenMD 自身后按
+//! “推荐在前、名称排序”返回。
 
 use serde::Serialize;
 use std::path::Path;
@@ -32,36 +41,60 @@ pub fn detect_editors() -> Vec<EditorApp> {
     {
         imp::detect_editors_impl()
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    {
+        imp::detect_editors_impl()
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         Vec::new()
     }
 }
 
-/// 用选中的程序打开文件。绑定 exe 必须存在且是可执行文件,防止前端被诱导
-/// 拼出任意命令;文件必须存在。
+/// 用选中的程序打开文件。绑定目标必须存在且可启动,防止前端被诱导拼出任意
+/// 命令;文件必须存在。Windows 上目标必须是 .exe,macOS 上必须是 `.app`
+/// bundle(或 bundle 内 `Contents/MacOS/` 下的可执行文件)。
 #[tauri::command]
 pub fn open_file_with(exe: String, path: String) -> Result<(), String> {
-    let exe_path = Path::new(&exe);
-    if !exe_path.is_file() {
-        return Err(format!("程序不存在: {exe}"));
+    #[cfg(windows)]
+    {
+        // Windows 分支的校验顺序与错误文案保持原样。
+        let exe_path = Path::new(&exe);
+        if !exe_path.is_file() {
+            return Err(format!("程序不存在: {exe}"));
+        }
+        let is_exe = exe_path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("exe"))
+            .unwrap_or(false);
+        if !is_exe {
+            return Err(format!("不是可执行文件: {exe}"));
+        }
+        if !Path::new(&path).is_file() {
+            return Err(format!("文件不存在: {path}"));
+        }
+        std::process::Command::new(exe_path)
+            .arg(&path)
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("无法启动 {exe}: {e}"))
     }
-    let is_exe = exe_path
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.eq_ignore_ascii_case("exe"))
-        .unwrap_or(false);
-    if !is_exe {
-        return Err(format!("不是可执行文件: {exe}"));
+
+    #[cfg(target_os = "macos")]
+    {
+        if !Path::new(&path).is_file() {
+            return Err(format!("文件不存在: {path}"));
+        }
+        imp::launch_macos(&exe, &path)
     }
-    if !Path::new(&path).is_file() {
-        return Err(format!("文件不存在: {path}"));
+
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let _ = Path::new(&exe);
+        let _ = &path;
+        Err("当前平台不支持“用其他程序打开”".to_string())
     }
-    std::process::Command::new(exe_path)
-        .arg(&path)
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("无法启动 {exe}: {e}"))
 }
 
 #[cfg(windows)]
@@ -819,6 +852,538 @@ mod imp {
     }
 }
 
+/// macOS 实现:扫描常见应用目录下的 `.app` bundle。
+///
+/// macOS 没有注册表:`Info.plist` 的 `CFBundleDocumentTypes` 就是应用声明
+/// “我能打开哪些类型”的地方,Launch Services 选定的默认处理程序则写在用户
+/// 偏好 plist 里。两者都用系统自带的 `/usr/bin/plutil -convert json` 转成
+/// JSON 后交给 serde_json 解析——`plutil` 是 macOS 基础组件,能同时处理 XML
+/// 与二进制 plist,而引入 `plist` crate 会多出一棵依赖树,故不采用。
+#[cfg(target_os = "macos")]
+mod imp {
+    use super::EditorApp;
+    use serde_json::Value;
+    use std::path::{Path, PathBuf};
+    use std::process::Command;
+
+    /// 支持“用其他程序打开”的扩展名(与前端 MARKDOWN_EXTENSIONS 一致)。
+    const MD_EXTENSIONS: &[&str] = &["md", "markdown", "mdown", "mkd"];
+
+    /// Markdown 的 UTI:前者是 macOS 标准标识,后两个是部分应用使用的别名。
+    const MD_UTIS: &[&str] = &["net.daringfireball.markdown", "public.markdown", "text/markdown"];
+
+    /// bundle 搜索目录与递归深度(深度 2 覆盖 `Utilities/`、JetBrains Toolbox
+    /// 这类一级子目录)。`~/Applications` 由 HOME 拼接后单独扫描。
+    const BUNDLE_DIRS: &[(&str, usize)] = &[
+        ("/Applications", 2),
+        ("/System/Applications", 2),
+        ("/System/Library/CoreServices", 1),
+    ];
+
+    /// 扫描出的 bundle 数量上限,避免异常目录结构带来无谓开销。
+    const MAX_BUNDLES: usize = 2000;
+
+    /// 应用名(去掉 `.app` 的目录名或 CFBundleDisplayName)白名单:名称按非
+    /// 字母数字切分后,任一段与此精确相等即命中。沿用 Windows 版
+    /// EDITOR_EXE_TOKENS 的思路,并补充 macOS 常见编辑器;短词只做精确 token
+    /// 匹配,避免 “Xcode” 之类被 “code” 之外的词误伤、反之亦然。
+    const EDITOR_APP_TOKENS: &[&str] = &[
+        "code", "vscode", "vscodium", "cursor", "zed", "vim", "gvim", "nvim", "neovim",
+        "macvim", "idea", "studio", "devenv", "fleet", "rider", "typora", "notepad",
+        "emacs", "marktext", "obsidian", "logseq", "joplin", "zettlr", "xcode",
+        "textedit", "textmate", "coteditor", "nova", "bbedit", "markdown", "macdown",
+        "marked", "ghostwriter", "apostrophe", "ulysses", "byword", "mou", "haroopad",
+        "lightpaper", "qoder", "trae", "windsurf", "ultraedit", "atom", "brackets",
+        "helix", "kakoune", "mweb", "sublime",
+    ];
+
+    /// 名称里包含这些无歧义长串即视为编辑器(对应 Windows 版的 CONTAINS)。
+    const EDITOR_APP_CONTAINS: &[&str] = &[
+        "visual studio code",
+        "vs code",
+        "intellij",
+        "pycharm",
+        "webstorm",
+        "phpstorm",
+        "rubymine",
+        "datagrip",
+        "rustrover",
+        "goland",
+        "clion",
+        "codebuddy",
+        "hbuilder",
+        "android studio",
+        "ia writer",
+        "sublime text",
+        "mark text",
+        "one markdown",
+        "notepad++",
+        "deveco",
+    ];
+
+    /// 名称里包含这些片段的一律排除:卸载器/更新器/辅助进程/URL handler
+    /// (如 “Claude Code URL Handler” 会被 “code” 命中)等噪音。
+    const EDITOR_APP_DENY: &[&str] = &[
+        "uninstall",
+        "installer",
+        "updater",
+        "helper",
+        "handler",
+        "crashpad",
+        "daemon",
+        "reporter",
+        "diagnostic",
+        "agent",
+        "service",
+    ];
+
+    /// `.app` 的目录名:与 Finder 显示的名称一致,也是 Info.plist 缺失时的兜底。
+    pub(super) fn bundle_display_name(bundle: &Path) -> String {
+        bundle
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("程序")
+            .to_string()
+    }
+
+    /// 名称是否落在编辑器白名单里(先过黑名单)。
+    pub(super) fn is_editor_app_name(name: &str) -> bool {
+        let lower = name.trim().to_lowercase();
+        if lower.is_empty() || EDITOR_APP_DENY.iter().any(|d| lower.contains(d)) {
+            return false;
+        }
+        lower
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|t| !t.is_empty())
+            .any(|t| EDITOR_APP_TOKENS.contains(&t))
+            || EDITOR_APP_CONTAINS.iter().any(|kw| lower.contains(kw))
+    }
+
+    /// VS Code 家族名称归一,与 Windows 版保持一致,避免同一应用出现两条。
+    pub(super) fn canonical_editor_name(name: &str) -> String {
+        let lower = name.to_lowercase();
+        if lower.contains("visual studio code")
+            || lower.contains("vs code")
+            || lower.contains("vscode")
+        {
+            "Visual Studio Code".to_string()
+        } else {
+            name.to_string()
+        }
+    }
+
+    // ---- Info.plist / Launch Services 解析 ----
+
+    /// `CFBundleDocumentTypes` 里的一条文档类型声明。
+    #[derive(Debug, Default, Clone, PartialEq, Eq)]
+    pub(super) struct DocTypeDecl {
+        pub name: Option<String>,
+        pub extensions: Vec<String>,
+        pub content_types: Vec<String>,
+    }
+
+    fn str_field(v: &Value, key: &str) -> Option<String> {
+        let s = v.get(key)?.as_str()?.trim();
+        (!s.is_empty()).then(|| s.to_string())
+    }
+
+    /// 取字符串数组,统一小写去空(扩展名/UTI 比较都不区分大小写)。
+    fn str_array(v: &Value, key: &str) -> Vec<String> {
+        v.get(key)
+            .and_then(|x| x.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str())
+                    .map(|s| s.trim().to_lowercase())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// 解析 `CFBundleDocumentTypes`;字段缺失或类型不符按空处理。
+    pub(super) fn parse_document_types(plist: &Value) -> Vec<DocTypeDecl> {
+        let Some(items) = plist.get("CFBundleDocumentTypes").and_then(|v| v.as_array()) else {
+            return Vec::new();
+        };
+        items
+            .iter()
+            .map(|item| DocTypeDecl {
+                name: str_field(item, "CFBundleTypeName"),
+                extensions: str_array(item, "CFBundleTypeExtensions"),
+                content_types: str_array(item, "LSItemContentTypes"),
+            })
+            .collect()
+    }
+
+    /// Markdown UTI 判定:命中已知 UTI,或 UTI 里带 markdown 字样。
+    pub(super) fn is_markdown_content_type(ct: &str) -> bool {
+        let ct = ct.trim().to_lowercase();
+        MD_UTIS.iter().any(|m| ct == *m) || ct.contains("markdown")
+    }
+
+    /// 该声明是否覆盖 Markdown:扩展名命中 .md 等,或 UTI 命中 Markdown,
+    /// 或声明名(CFBundleTypeName)明确写了 markdown。
+    pub(super) fn declares_markdown(decl: &DocTypeDecl) -> bool {
+        decl.extensions
+            .iter()
+            .any(|e| MD_EXTENSIONS.iter().any(|m| e.eq_ignore_ascii_case(m)))
+            || decl.content_types.iter().any(|c| is_markdown_content_type(c))
+            || decl
+                .name
+                .as_deref()
+                .map(|n| n.to_lowercase().contains("markdown"))
+                .unwrap_or(false)
+    }
+
+    /// 整份 Info.plist 是否声明了 Markdown 处理能力。
+    pub(super) fn plist_declares_markdown(plist: &Value) -> bool {
+        parse_document_types(plist).iter().any(declares_markdown)
+    }
+
+    /// 读 plist 并转成 JSON。用系统自带 `/usr/bin/plutil`,兼容 XML 与二进制
+    /// plist;失败(文件不存在、格式异常、plutil 不可用)返回 None。
+    pub(super) fn read_plist_json(path: &Path) -> Option<Value> {
+        let out = Command::new("/usr/bin/plutil")
+            .args(["-convert", "json", "-o", "-"])
+            .arg(path)
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        serde_json::from_slice(&out.stdout).ok()
+    }
+
+    /// 用户级 Launch Services 偏好里的 Markdown 默认处理程序 bundle id。
+    /// 文件不存在/无法解析时返回空列表(不阻塞检测)。
+    pub(super) fn launch_services_markdown_handlers() -> Vec<String> {
+        let Some(home) = std::env::var_os("HOME") else {
+            return Vec::new();
+        };
+        let plist = PathBuf::from(home).join(
+            "Library/Preferences/com.apple.LaunchServices/com.apple.launchservices.secure.plist",
+        );
+        let Some(v) = read_plist_json(&plist) else {
+            return Vec::new();
+        };
+        let Some(handlers) = v.get("LSHandlers").and_then(|h| h.as_array()) else {
+            return Vec::new();
+        };
+        let mut ids: Vec<String> = Vec::new();
+        for h in handlers {
+            let ct = h
+                .get("LSHandlerContentType")
+                .and_then(|x| x.as_str())
+                .unwrap_or_default();
+            let tag = h
+                .get("LSHandlerContentTag")
+                .and_then(|x| x.as_str())
+                .unwrap_or_default();
+            let is_md = (!ct.is_empty() && is_markdown_content_type(ct))
+                || (!tag.is_empty() && MD_EXTENSIONS.iter().any(|e| tag.eq_ignore_ascii_case(e)));
+            if !is_md {
+                continue;
+            }
+            if let Some(role) = h.get("LSHandlerRoleAll").and_then(|x| x.as_str()) {
+                let role = role.trim();
+                if !role.is_empty() && role != "-" {
+                    ids.push(role.to_string());
+                }
+            }
+        }
+        ids.sort();
+        ids.dedup();
+        ids
+    }
+
+    /// bundle id → `.app` 路径(Spotlight)。Spotlight 不可用时返回 None,
+    /// 检测结果只是少一条,不影响其余条目。
+    pub(super) fn bundle_path_for_id(id: &str) -> Option<PathBuf> {
+        // bundle id 来自 plist,仍做一次保守校验,避免拼出畸形查询串。
+        if id.is_empty() || id.contains(['\'', '"']) {
+            return None;
+        }
+        let out = Command::new("/usr/bin/mdfind")
+            .arg(format!("kMDItemCFBundleIdentifier == '{id}'"))
+            .output()
+            .ok()?;
+        if !out.status.success() {
+            return None;
+        }
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty())
+            .map(PathBuf::from)
+            .find(|p| p.is_dir() && has_app_extension(p))
+    }
+
+    // ---- 候选收集 ----
+
+    /// 一个候选应用:bundle 目录、对外暴露的启动目标、显示名、推荐标记。
+    #[derive(Clone)]
+    pub(super) struct Candidate {
+        pub bundle: PathBuf,
+        pub exe: PathBuf,
+        pub name: String,
+        pub recommended: bool,
+    }
+
+    fn has_app_extension(p: &Path) -> bool {
+        p.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("app"))
+            .unwrap_or(false)
+    }
+
+    /// bundle 内可执行文件:`Contents/MacOS/<CFBundleExecutable>`;plist 缺失或
+    /// 指向不存在的文件时,退回该目录下唯一的普通文件;都取不到时退回 `.app`
+    /// 本身(`open -a` 仍可启动)。
+    pub(super) fn bundle_executable(bundle: &Path, plist: Option<&Value>) -> PathBuf {
+        let macos = bundle.join("Contents").join("MacOS");
+        if let Some(exe) = plist.and_then(|p| str_field(p, "CFBundleExecutable")) {
+            let p = macos.join(exe);
+            if p.is_file() {
+                return p;
+            }
+        }
+        if let Ok(rd) = std::fs::read_dir(&macos) {
+            let mut files: Vec<PathBuf> = rd
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_file())
+                .collect();
+            if files.len() == 1 {
+                return files.remove(0);
+            }
+        }
+        bundle.to_path_buf()
+    }
+
+    /// 组装一个候选。显示名优先 CFBundleDisplayName / CFBundleName,其次目录名;
+    /// `recommended` 由 Info.plist 的 Markdown 声明或 Launch Services 默认处理
+    /// 程序决定。
+    fn push_candidate(
+        bundle: &Path,
+        plist: Option<&Value>,
+        default_ids: &[String],
+        out: &mut Vec<Candidate>,
+    ) {
+        let id = plist
+            .and_then(|p| p.get("CFBundleIdentifier"))
+            .and_then(|v| v.as_str())
+            .map(str::trim)
+            .unwrap_or_default();
+        let name = plist
+            .and_then(|p| {
+                str_field(p, "CFBundleDisplayName").or_else(|| str_field(p, "CFBundleName"))
+            })
+            .unwrap_or_else(|| bundle_display_name(bundle));
+        let recommended = plist.map(plist_declares_markdown).unwrap_or(false)
+            || (!id.is_empty() && default_ids.iter().any(|d| d == id));
+        out.push(Candidate {
+            bundle: bundle.to_path_buf(),
+            exe: bundle_executable(bundle, plist),
+            name,
+            recommended,
+        });
+    }
+
+    /// 递归收集 `.app`(不进入 bundle 内部),深度用尽即停。
+    fn collect_bundles(dir: &Path, depth: usize, out: &mut Vec<PathBuf>) {
+        if depth == 0 || out.len() >= MAX_BUNDLES {
+            return;
+        }
+        let Ok(rd) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for entry in rd.flatten() {
+            if out.len() >= MAX_BUNDLES {
+                return;
+            }
+            let p = entry.path();
+            if has_app_extension(&p) {
+                out.push(p);
+            } else if depth > 1 && p.is_dir() {
+                collect_bundles(&p, depth - 1, out);
+            }
+        }
+    }
+
+    /// 自身 bundle(从当前可执行文件向上找最近的 `.app`)。
+    fn own_bundle() -> Option<PathBuf> {
+        app_bundle_of(&std::env::current_exe().ok()?)
+    }
+
+    fn is_openmd_name(name: &str) -> bool {
+        name.trim().to_lowercase() == "openmd"
+    }
+
+    fn is_known_bundle(bundle: &Path, cands: &[Candidate]) -> bool {
+        let Ok(can) = std::fs::canonicalize(bundle) else {
+            return false;
+        };
+        cands
+            .iter()
+            .any(|c| std::fs::canonicalize(&c.bundle).map(|b| b == can).unwrap_or(false))
+    }
+
+    /// 规范化、去重(按 bundle 路径与归一化显示名)、排除 OpenMD 自身,
+    /// 推荐在前、名称排序。图标在 macOS 上不提取(前端回退通用图标)。
+    pub(super) fn finalize(cands: Vec<Candidate>, own_bundle: Option<&Path>) -> Vec<EditorApp> {
+        let own = own_bundle.and_then(|p| std::fs::canonicalize(p).ok());
+        let mut out: Vec<EditorApp> = Vec::new();
+        let mut seen_bundles: Vec<PathBuf> = Vec::new();
+        for c in cands {
+            let Ok(can) = std::fs::canonicalize(&c.bundle) else {
+                continue;
+            };
+            if !can.is_dir() || seen_bundles.contains(&can) {
+                continue;
+            }
+            if let Some(own) = &own {
+                if can == *own {
+                    continue;
+                }
+            }
+            let name = canonical_editor_name(&c.name);
+            if is_openmd_name(&name) {
+                continue;
+            }
+            // 同名(归一化后)视为同一应用:已存在时,仅在新区表被系统推荐时
+            // 升级为推荐(exe 也随之更新)。
+            if let Some(pos) = out.iter().position(|e| e.name.eq_ignore_ascii_case(&name)) {
+                if c.recommended && !out[pos].recommended {
+                    out[pos].exe = c.exe.to_string_lossy().into_owned();
+                    out[pos].recommended = true;
+                }
+                continue;
+            }
+            seen_bundles.push(can);
+            out.push(EditorApp {
+                name,
+                exe: c.exe.to_string_lossy().into_owned(),
+                icon: None,
+                recommended: c.recommended,
+            });
+        }
+        out.sort_by(|a, b| {
+            b.recommended
+                .cmp(&a.recommended)
+                .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+        });
+        out
+    }
+
+    /// 检测入口:`Info.plist` 声明 + Launch Services 默认处理程序并集。
+    pub(super) fn detect_editors_impl() -> Vec<EditorApp> {
+        let default_ids = launch_services_markdown_handlers();
+
+        let mut bundles: Vec<PathBuf> = Vec::new();
+        for (dir, depth) in BUNDLE_DIRS {
+            collect_bundles(Path::new(dir), *depth, &mut bundles);
+        }
+        if let Some(home) = std::env::var_os("HOME") {
+            collect_bundles(&PathBuf::from(home).join("Applications"), 2, &mut bundles);
+        }
+
+        let mut cands: Vec<Candidate> = Vec::new();
+        for bundle in &bundles {
+            // 白名单只作用于扫描来源:全量读取每个 bundle 的 Info.plist 既慢,
+            // 也会把声明了 markdown UTI 却并非编辑器的应用(如各种 Electron
+            // 应用的样板声明)带进来。
+            if !is_editor_app_name(&bundle_display_name(bundle)) {
+                continue;
+            }
+            let plist = read_plist_json(&bundle.join("Contents").join("Info.plist"));
+            push_candidate(bundle, plist.as_ref(), &default_ids, &mut cands);
+        }
+
+        // Launch Services 的默认 Markdown 处理程序:即使名字不在白名单里,
+        // 它也是系统认可的打开方式,应当出现在菜单里。
+        for id in &default_ids {
+            let Some(bundle) = bundle_path_for_id(id) else {
+                continue;
+            };
+            if is_known_bundle(&bundle, &cands) {
+                continue;
+            }
+            let plist = read_plist_json(&bundle.join("Contents").join("Info.plist"));
+            push_candidate(&bundle, plist.as_ref(), &default_ids, &mut cands);
+        }
+
+        finalize(cands, own_bundle().as_deref())
+    }
+
+    // ---- 启动 ----
+
+    /// 从任意路径向上找最近的 `.app` 组件(不做存在性判断)。
+    pub(super) fn app_bundle_of(p: &Path) -> Option<PathBuf> {
+        if has_app_extension(p) {
+            return Some(p.to_path_buf());
+        }
+        let mut cur = p.parent();
+        while let Some(c) = cur {
+            if has_app_extension(c) {
+                return Some(c.to_path_buf());
+            }
+            cur = c.parent();
+        }
+        None
+    }
+
+    /// exe 是否恰好是 bundle 内 `Contents/MacOS/` 下的普通文件(解析符号链接
+    /// 后比较,防止 `Foo.app/../../etc/passwd` 之类的伪造路径)。
+    pub(super) fn is_bundle_macos_executable(exe: &Path, bundle: &Path) -> bool {
+        if !exe.is_file() {
+            return false;
+        }
+        let (Ok(exe), Ok(bundle)) = (std::fs::canonicalize(exe), std::fs::canonicalize(bundle))
+        else {
+            return false;
+        };
+        exe.parent() == Some(bundle.join("Contents").join("MacOS").as_path())
+    }
+
+    /// 校验前端传来的 exe 是不是合法的 macOS 启动目标,返回要交给 `open -a`
+    /// 的 bundle 路径。除 `.app` 本身外,只接受 bundle 内 `Contents/MacOS/` 下
+    /// 的可执行文件;任意其它二进制一律拒绝。
+    pub(super) fn resolve_launch_bundle(exe: &str) -> Result<PathBuf, String> {
+        let exe_path = Path::new(exe);
+        let bundle =
+            app_bundle_of(exe_path).ok_or_else(|| format!("不是 macOS 应用(.app): {exe}"))?;
+        if !bundle.is_dir() {
+            return Err(format!("程序不存在: {exe}"));
+        }
+        if exe_path != bundle && !is_bundle_macos_executable(exe_path, &bundle) {
+            return Err(format!("不是可执行文件: {exe}"));
+        }
+        Ok(bundle)
+    }
+
+    /// 用 `/usr/bin/open -a <app> <file>` 打开,避免直接执行任意二进制;
+    /// `open` 的 stderr 原样带回给前端。
+    pub(super) fn launch_macos(exe: &str, path: &str) -> Result<(), String> {
+        let bundle = resolve_launch_bundle(exe)?;
+        let out = Command::new("/usr/bin/open")
+            .arg("-a")
+            .arg(&bundle)
+            .arg(path)
+            .output()
+            .map_err(|e| format!("无法启动 {exe}: {e}"))?;
+        if !out.status.success() {
+            let err = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            return Err(if err.is_empty() {
+                format!("无法启动 {exe}")
+            } else {
+                format!("无法启动 {exe}: {err}")
+            });
+        }
+        Ok(())
+    }
+}
+
 #[cfg(all(test, windows))]
 mod tests {
     use super::imp::{
@@ -1048,5 +1613,271 @@ mod tests {
         assert!(got[0].recommended && got[0].name == "Alpha");
         assert!(!got[1].recommended && got[1].name == "Zeta");
         fs::remove_dir_all(&dir).ok();
+    }
+}
+
+/// macOS 纯逻辑单测:不依赖本机装了哪些应用,只用手造 JSON 与临时目录。
+#[cfg(all(test, target_os = "macos"))]
+mod mac_tests {
+    use super::imp::{
+        app_bundle_of, bundle_executable, canonical_editor_name, declares_markdown, finalize,
+        is_bundle_macos_executable, is_editor_app_name, parse_document_types,
+        plist_declares_markdown, resolve_launch_bundle, Candidate,
+    };
+    use serde_json::json;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+    fn scratch(prefix: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "openmd-mac-editors-{}-{}-{}",
+            prefix,
+            std::process::id(),
+            COUNTER.fetch_add(1, Ordering::SeqCst)
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn document_types_and_markdown_detection() {
+        // 形如 VS Code / Cursor:一条 markdown 声明混在大量代码类型里。
+        let cursor_like = json!({
+            "CFBundleDocumentTypes": [
+                {"CFBundleTypeName": "C source code", "CFBundleTypeExtensions": ["c"]},
+                {"CFBundleTypeName": "Markdown document",
+                 "CFBundleTypeExtensions": ["markdown", "MD", "mdown", "mkd"]}
+            ]
+        });
+        // 形如 TextEdit:只声明纯文本/任意数据,不算 Markdown 关联。
+        let textedit_like = json!({
+            "CFBundleDocumentTypes": [
+                {"CFBundleTypeName": "NSStringPboardType",
+                 "LSItemContentTypes": ["public.plain-text"]},
+                {"CFBundleTypeName": "Unknown document", "LSItemContentTypes": ["public.data"]}
+            ]
+        });
+        let uti_only = json!({
+            "CFBundleDocumentTypes": [
+                {"CFBundleTypeName": "Document",
+                 "LSItemContentTypes": ["net.daringfireball.markdown"]}
+            ]
+        });
+        let alias_uti = json!({
+            "CFBundleDocumentTypes": [{"LSItemContentTypes": ["public.markdown"]}]
+        });
+
+        assert!(plist_declares_markdown(&cursor_like));
+        assert!(plist_declares_markdown(&uti_only));
+        assert!(plist_declares_markdown(&alias_uti));
+        assert!(!plist_declares_markdown(&textedit_like));
+        assert!(!plist_declares_markdown(&json!({})));
+        assert!(!plist_declares_markdown(&json!({"CFBundleDocumentTypes": "oops"})));
+
+        let decls = parse_document_types(&cursor_like);
+        assert_eq!(decls.len(), 2);
+        assert!(!declares_markdown(&decls[0]));
+        assert!(declares_markdown(&decls[1]));
+        assert_eq!(decls[0].extensions, vec!["c".to_string()]);
+        assert_eq!(decls[0].name.as_deref(), Some("C source code"));
+    }
+
+    #[test]
+    fn editor_app_allowlist_matches_editors_and_rejects_noise() {
+        for ok in [
+            "Visual Studio Code",
+            "VS Code Insiders",
+            "VSCodium",
+            "Cursor",
+            "Zed",
+            "Sublime Text",
+            "BBEdit",
+            "TextMate",
+            "Typora",
+            "Obsidian",
+            "MarkText",
+            "MacDown",
+            "Marked 2",
+            "iA Writer",
+            "TextEdit",
+            "Xcode",
+            "Nova",
+            "CotEditor",
+            "Windsurf",
+            "IntelliJ IDEA",
+            "PyCharm",
+            "Qoder CN",
+            "Zettlr",
+            "Joplin",
+            "MacVim",
+            "Notepad++",
+            "Android Studio",
+        ] {
+            assert!(is_editor_app_name(ok), "{ok} should match");
+        }
+        for bad in [
+            "Google Chrome",
+            "Safari",
+            "Claude",
+            "Claude Code URL Handler",
+            "WorkBuddy",
+            "CC Switch",
+            "OpenDisk",
+            "Script Editor",
+            "Finder",
+            "Uninstall Zed",
+            "Zed Updater",
+            "OpenMD",
+            "",
+        ] {
+            assert!(!is_editor_app_name(bad), "{bad} should not match");
+        }
+    }
+
+    #[test]
+    fn vscode_family_names_are_canonicalized() {
+        assert_eq!(canonical_editor_name("Microsoft VS Code"), "Visual Studio Code");
+        assert_eq!(
+            canonical_editor_name("Visual Studio Code"),
+            "Visual Studio Code"
+        );
+        assert_eq!(canonical_editor_name("Cursor"), "Cursor");
+    }
+
+    #[test]
+    fn finalize_orders_recommended_first_and_dedupes() {
+        let dir = scratch("finalize");
+        let mk = |n: &str| {
+            let p = dir.join(n);
+            fs::create_dir_all(&p).unwrap();
+            p
+        };
+        let alpha = mk("Alpha.app");
+        let beta = mk("Beta.app");
+        let gamma = mk("Gamma.app");
+        let delta = mk("Delta.app");
+        let epsilon = mk("Epsilon.app");
+        let openmd = mk("OpenMD.app");
+
+        let cand = |bundle: &PathBuf, name: &str, recommended: bool| Candidate {
+            bundle: bundle.clone(),
+            exe: bundle.join("Contents/MacOS/x"),
+            name: name.to_string(),
+            recommended,
+        };
+
+        let got = finalize(
+            vec![
+                cand(&alpha, "Alpha", false),
+                cand(&beta, "Beta", true),
+                cand(&alpha, "Alpha", true), // 同一 bundle:去重,保留先出现的
+                cand(&delta, "Zeta", false), // 与下一条同名:保留 recommended 的
+                cand(&epsilon, "Zeta", true),
+                cand(&gamma, "Gamma", false), // own_bundle:排除
+                cand(&openmd, "OpenMD", true), // 自身名称:排除
+                Candidate {
+                    bundle: dir.join("Gone.app"),
+                    exe: dir.join("gone"),
+                    name: "Gone".into(),
+                    recommended: true,
+                },
+            ],
+            Some(&gamma),
+        );
+
+        let names: Vec<&str> = got.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["Beta", "Zeta", "Alpha"]);
+        assert!(got[0].recommended);
+        assert!(got[1].recommended);
+        assert!(!got[2].recommended);
+        assert!(got[1].exe.ends_with("Epsilon.app/Contents/MacOS/x"));
+        assert!(got.iter().all(|e| e.icon.is_none()));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn bundle_executable_prefers_plist_name_then_sole_file() {
+        let dir = scratch("exe");
+        let bundle = dir.join("Bar.app");
+        let macos = bundle.join("Contents/MacOS");
+        fs::create_dir_all(&macos).unwrap();
+        fs::write(macos.join("Bar"), b"x").unwrap();
+        fs::write(macos.join("Bar Helper"), b"x").unwrap();
+
+        let ok = json!({"CFBundleExecutable": "Bar"});
+        assert_eq!(bundle_executable(&bundle, Some(&ok)), macos.join("Bar"));
+        // plist 指向不存在的文件、且目录下不止一个文件 → 退回 .app 本身
+        let missing = json!({"CFBundleExecutable": "Nope"});
+        assert_eq!(bundle_executable(&bundle, Some(&missing)), bundle);
+        // 目录下只有一个普通文件时可推断
+        fs::remove_file(macos.join("Bar Helper")).unwrap();
+        assert_eq!(bundle_executable(&bundle, None), macos.join("Bar"));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn launch_target_must_be_app_bundle_or_its_macos_executable() {
+        let dir = scratch("launch");
+        let bundle = dir.join("Foo.app");
+        let macos = bundle.join("Contents/MacOS");
+        fs::create_dir_all(&macos).unwrap();
+        let good = macos.join("Foo");
+        fs::write(&good, b"#!/bin/sh\n").unwrap();
+
+        let canon = |p: &Path| fs::canonicalize(p).unwrap();
+        assert_eq!(
+            canon(&resolve_launch_bundle(bundle.to_str().unwrap()).unwrap()),
+            canon(&bundle)
+        );
+        assert_eq!(
+            canon(&resolve_launch_bundle(good.to_str().unwrap()).unwrap()),
+            canon(&bundle)
+        );
+
+        // 拒绝:任意二进制、不存在的 .app、bundle 内缺失的 exe、bundle 内非
+        // Contents/MacOS 的文件
+        assert!(resolve_launch_bundle("/bin/sh").is_err());
+        assert!(resolve_launch_bundle(dir.join("Bar.app").to_str().unwrap()).is_err());
+        assert!(resolve_launch_bundle(macos.join("Missing").to_str().unwrap()).is_err());
+        let res = bundle.join("Contents/Resources/evil");
+        fs::create_dir_all(res.parent().unwrap()).unwrap();
+        fs::write(&res, b"x").unwrap();
+        assert!(resolve_launch_bundle(res.to_str().unwrap()).is_err());
+
+        assert!(app_bundle_of(&good).unwrap().ends_with("Foo.app"));
+        assert!(is_bundle_macos_executable(&good, &bundle));
+        assert!(!is_bundle_macos_executable(&res, &bundle));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn detect_editors_on_this_machine_returns_sane_entries() {
+        // 只断言任意 Mac 都成立的不变量(启动目标存在、名称非空、无重名),
+        // 具体装了哪些应用不影响判定;本机菜单内容用 --nocapture 人工核对。
+        let list = super::imp::detect_editors_impl();
+        for e in &list {
+            let p = Path::new(&e.exe);
+            assert!(
+                p.is_file() || (p.is_dir() && e.exe.ends_with(".app")),
+                "{} 不是可启动目标",
+                e.exe
+            );
+            assert!(!e.name.is_empty());
+        }
+        for (i, a) in list.iter().enumerate() {
+            for b in &list[i + 1..] {
+                assert!(
+                    !a.name.eq_ignore_ascii_case(&b.name),
+                    "菜单里出现重名应用: {}",
+                    a.name
+                );
+            }
+        }
+        for e in &list {
+            println!("{:?} | {} | recommended={}", e.name, e.exe, e.recommended);
+        }
     }
 }
