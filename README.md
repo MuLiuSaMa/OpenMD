@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/wordmark-black.png" alt="OpenMD" width="320">
+  <img src="docs/banner.png" alt="OpenMD" width="1060" style="">
 </p>
 
-<p align="center">本地优先的 Markdown 阅读器 — 为阅读而生，快速、干净、无干扰。</p>
+<p align="center">为阅读而生的 Markdown 阅读器 — 快速、干净、无干扰。</p>
 
 <p align="center">
   <a href="https://github.com/MuLiuSaMa/OpenMD/releases">
