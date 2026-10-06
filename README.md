@@ -108,7 +108,11 @@ pnpm tauri build
 sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
 pnpm install
 pnpm tauri build
-# 产物：src-tauri/target/release/openmd
+# 产物：
+#   src-tauri/target/release/openmd                    可执行文件
+#   src-tauri/target/release/bundle/deb/*.deb          Debian/Ubuntu/Mint 安装包
+#   src-tauri/target/release/bundle/rpm/*.rpm          Fedora/openSUSE/RHEL 安装包
+#   src-tauri/target/release/bundle/appimage/*.AppImage 免安装单文件（chmod +x 后直接运行）
 ```
 
 Fedora/Arch 等其他发行版请参考 Tauri 官方文档安装对应的 `webkit2gtk-4.1` 开发包。

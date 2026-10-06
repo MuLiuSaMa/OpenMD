@@ -33,12 +33,20 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["app", "deb", "rpm", "appimage"],
     "category": "Utility",
     "shortDescription": "简洁 美观 高效的 Markdown 查看器",
     "copyright": "OpenMD",
     "macOS": {
       "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libsoup-3.0-0"
+        ]
+      }
     },
     "icon": [
       "icons/128x128@2x.png",
