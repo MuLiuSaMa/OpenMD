@@ -39,6 +39,9 @@ path:
   cwd_failed: "無法確定目前目錄: %{error}"
   invalid_utf8: "路徑不是有效的 UTF-8: %{path}"
 
+workspace:
+  not_a_dir: "不是資料夾: %{path}"
+
 image:
   not_image: "不是圖片檔案: %{path}"
   not_found: "找不到圖片: %{path}"

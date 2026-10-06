@@ -3,6 +3,7 @@
   "stores.tabs.browserPreviewOpenError": "瀏覽器預覽模式只能開啟 public/ 下的檔案(如 sample.md):{{path}}",
   "stores.tabs.overwriteDiskChanged": "檔案已在磁碟上被修改。仍要以編輯內容覆蓋嗎?",
   "stores.api.openFileDialogTitle": "開啟 Markdown 檔案",
+  "stores.api.openFolderDialogTitle": "選擇工作區資料夾",
   "stores.api.selectImageDialogTitle": "選擇圖片",
   "stores.api.imageFilterName": "圖片"
 }

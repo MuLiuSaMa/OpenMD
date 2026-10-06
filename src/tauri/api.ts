@@ -86,6 +86,54 @@ export async function openFileDialog(): Promise<string[] | null> {
   });
 }
 
+/** Native folder picker for the workspace sidebar. Returns one absolute path. */
+export async function openFolderDialog(): Promise<string | null> {
+  const picked = await open({
+    directory: true,
+    multiple: false,
+    title: i18n.t("stores.api.openFolderDialogTitle"),
+  });
+  if (Array.isArray(picked)) return picked[0] ?? null;
+  return picked;
+}
+
+// ---- 文件夹工作区 ----
+
+export interface WorkspaceEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+}
+
+/** List one level of the workspace tree (dirs + readable docs, junk skipped). */
+export async function listWorkspaceDir(path: string): Promise<WorkspaceEntry[]> {
+  return invoke("list_workspace_dir", { path });
+}
+
+/** Whether a dropped path is a folder (→ open as workspace). */
+export async function isDirectory(path: string): Promise<boolean> {
+  return invoke("is_directory", { path });
+}
+
+export async function watchWorkspace(path: string): Promise<void> {
+  return invoke("watch_workspace", { path });
+}
+
+export async function unwatchWorkspace(path: string): Promise<void> {
+  return invoke("unwatch_workspace", { path });
+}
+
+export interface WorkspaceChangedPayload {
+  root: string;
+  path: string;
+}
+
+export function onWorkspaceChanged(handler: (payload: WorkspaceChangedPayload) => void) {
+  return listen<WorkspaceChangedPayload>("workspace-changed", (event) =>
+    handler(event.payload),
+  ).catch(() => () => {});
+}
+
 const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"];
 
 /** Native single-image picker for the editor's insert/replace actions. */

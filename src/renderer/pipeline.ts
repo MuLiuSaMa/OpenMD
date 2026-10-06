@@ -76,6 +76,11 @@ function addSourceLinePlugin(mdInstance: MarkdownIt) {
       if (token.type.endsWith("_open")) {
         token.attrSet("data-source-line", String(token.map[0]));
         token.attrSet("data-source-end", String(token.map[1]));
+      } else if (token.type === "fence") {
+        // 默认 fence 渲染器会把 token attrs 输出到 <code> 上,打标后代码块
+        // (含 mermaid 图,渲染后的容器从这里继承行号)在编辑映射中可寻址。
+        token.attrSet("data-source-line", String(token.map[0]));
+        token.attrSet("data-source-end", String(token.map[1]));
       } else if (token.type === "html_block" && !/data-source-line=/.test(token.content)) {
         // Right after the tag name — safe even when attributes contain `>`
         // inside quoted values. Close tags (`</p>`) and comments don't match

@@ -7,7 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Flex, Box } from "@chakra-ui/react";
 import { TitleBar } from "./components/TitleBar";
 import { TabBar } from "./components/TabBar";
-import { TocSidebar } from "./components/TocSidebar";
+import { Sidebar } from "./components/Sidebar";
 import { MarkdownView } from "./components/MarkdownView";
 import { EmptyState } from "./components/EmptyState";
 import { StatusBar } from "./components/StatusBar";
@@ -16,15 +16,19 @@ import { CloseDialog } from "./components/CloseDialog";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { HOME_TAB_ID, useTabs } from "./stores/tabs";
 import { useSettings } from "./stores/settings";
+import { useWorkspace } from "./stores/workspace";
 import { useUpdate } from "./stores/update";
 import { viewInAnimation } from "./theme/theme";
 import {
   getOpenedFiles,
+  isDirectory,
   logAssoc,
   MARKDOWN_EXTENSIONS,
   onFileChanged,
   onOpenedFiles,
+  onWorkspaceChanged,
   openFileDialog,
+  openFolderDialog,
 } from "./tauri/api";
 
 /** True when running inside the Tauri webview (false in a plain browser). */
@@ -152,9 +156,14 @@ export default function App() {
         void openPath(p);
       }
     });
+    // 工作区目录树的外部变更(store 内部有拖尾合并,重拉展开目录)
+    const unlistenWorkspace = onWorkspaceChanged(({ path }) => {
+      useWorkspace.getState().refresh(path);
+    });
     return () => {
       unlistenFileChanged.then((fn) => fn());
       unlistenOpened.then((fn) => fn());
+      unlistenWorkspace.then((fn) => fn());
     };
   }, [refreshPath, openPath]);
 
@@ -166,14 +175,23 @@ export default function App() {
     return () => window.removeEventListener("contextmenu", onContextMenu);
   }, []);
 
-  // Drag & drop onto the window opens files.
+  // Drag & drop onto the window: .md files open as tabs, folders open as
+  // the workspace tree.
   useEffect(() => {
     if (!inTauri) return;
     const promise = getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type === "drop") {
           for (const p of event.payload.paths) {
-            if (isMarkdownPath(p)) void openPath(p);
+            if (isMarkdownPath(p)) {
+              void openPath(p);
+              continue;
+            }
+            void isDirectory(p)
+              .then((isDir) => {
+                if (isDir) void useWorkspace.getState().openFolder(p);
+              })
+              .catch(() => {});
           }
         }
       })
@@ -205,11 +223,20 @@ export default function App() {
 
       if (key === "o") {
         e.preventDefault();
-        openFileDialog()
-          .then((paths) => {
-            for (const p of paths ?? []) void useTabs.getState().openPath(p);
-          })
-          .catch((err) => setOpenError(String(err)));
+        if (e.shiftKey) {
+          // Ctrl+Shift+O:选择文件夹打开为工作区
+          openFolderDialog()
+            .then((p) => {
+              if (p) void useWorkspace.getState().openFolder(p);
+            })
+            .catch((err) => setOpenError(String(err)));
+        } else {
+          openFileDialog()
+            .then((paths) => {
+              for (const p of paths ?? []) void useTabs.getState().openPath(p);
+            })
+            .catch((err) => setOpenError(String(err)));
+        }
       } else if (key === "w") {
         if (state.activeId !== HOME_TAB_ID) {
           e.preventDefault();
@@ -248,7 +275,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const showToc = tocOpen && activeTab?.path !== null && activeTab !== undefined;
+  const showSidebar = tocOpen && activeTab?.path !== null && activeTab !== undefined;
   // 首页(无文档打开)整页留白,只显示居中文字 Logo。
   const isHome = !activeTab?.path;
   // 启动排水未完成前只渲染空白底色(正在打开关联文件),避免首页闪现。
@@ -264,7 +291,7 @@ export default function App() {
           <TitleBar onOpenError={setOpenError} />
           <TabBar />
           <Flex flex={1} minH={0}>
-            {activeTab && <TocSidebar open={showToc} />}
+            {activeTab && <Sidebar open={showSidebar} />}
             {activeTab && <MarkdownView key={activeTab.id} tab={activeTab} />}
           </Flex>
           <StatusBar />

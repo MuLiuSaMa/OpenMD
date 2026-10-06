@@ -3,6 +3,7 @@
   "stores.tabs.browserPreviewOpenError": "ブラウザプレビューモードで開けるのは public/ 配下のファイルのみです(例: sample.md):{{path}}",
   "stores.tabs.overwriteDiskChanged": "ファイルはディスク上で変更されています。編集内容で上書きしますか?",
   "stores.api.openFileDialogTitle": "Markdown ファイルを開く",
+  "stores.api.openFolderDialogTitle": "ワークスペースのフォルダを選択",
   "stores.api.selectImageDialogTitle": "画像を選択",
   "stores.api.imageFilterName": "画像"
 }

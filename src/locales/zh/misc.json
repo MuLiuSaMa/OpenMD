@@ -1,5 +1,6 @@
 {
   "misc.openFile": "打开文件",
+  "misc.openFolder": "打开文件夹",
   "misc.settings": "设置",
   "misc.recentFiles": "最近打开",
   "misc.clearRecent": "清空最近打开",

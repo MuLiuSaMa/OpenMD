@@ -17,7 +17,7 @@ pub fn log_assoc(message: String, app: AppHandle) {
 /// primitive against `~/.ssh/id_rsa`, `authorized_keys` and the like.
 const ALLOWED_TEXT_EXTENSIONS: &[&str] = &["md", "markdown", "mdown", "mkd", "mdx", "txt", "text"];
 
-fn has_allowed_extension(p: &Path) -> bool {
+pub(crate) fn has_allowed_extension(p: &Path) -> bool {
     p.extension()
         .and_then(|e| e.to_str())
         .map(|e| ALLOWED_TEXT_EXTENSIONS.iter().any(|a| a.eq_ignore_ascii_case(e)))
@@ -147,6 +147,117 @@ pub fn resolve_path(path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn path_exists(path: String) -> bool {
     Path::new(&path).exists()
+}
+
+/// Whether a path is an existing directory (drag-drop decides folder vs file).
+#[tauri::command]
+pub fn is_directory(path: String) -> bool {
+    Path::new(&path).is_dir()
+}
+
+// ---- 工作区目录树 ----
+
+/// Directory names the workspace tree never shows: dotfile/hidden entries and
+/// dependency/VCS farms that would bury the actual notes.
+fn is_ignored_workspace_dir(name: &str) -> bool {
+    name.starts_with('.') || name.eq_ignore_ascii_case("node_modules")
+}
+
+/// One row of the workspace tree: a subdirectory or a readable text document.
+#[derive(serde::Serialize)]
+pub struct WorkspaceEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+}
+
+/// "a2" sorts before "a10": digit runs compare numerically, everything else
+/// case-insensitively. Ties fall back to plain byte order.
+pub(crate) fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    use std::cmp::Ordering;
+    let mut ac = a.chars().peekable();
+    let mut bc = b.chars().peekable();
+    loop {
+        let (x, y) = match (ac.peek().copied(), bc.peek().copied()) {
+            (None, None) => return a.cmp(b),
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+            (Some(x), Some(y)) => (x, y),
+        };
+        if x.is_ascii_digit() && y.is_ascii_digit() {
+            let take = |it: &mut std::iter::Peekable<std::str::Chars>, first: char| {
+                let mut digits = String::new();
+                let mut peeked = Some(first);
+                while let Some(c) = peeked {
+                    if !c.is_ascii_digit() {
+                        break;
+                    }
+                    digits.push(c);
+                    it.next();
+                    peeked = it.peek().copied();
+                }
+                digits
+            };
+            let av = take(&mut ac, x).parse::<u128>().unwrap_or(u128::MAX);
+            let bv = take(&mut bc, y).parse::<u128>().unwrap_or(u128::MAX);
+            if av != bv {
+                return av.cmp(&bv);
+            }
+        } else {
+            let ord = x.to_lowercase().cmp(y.to_lowercase());
+            if ord != Ordering::Equal {
+                return ord;
+            }
+            ac.next();
+            bc.next();
+        }
+    }
+}
+
+/// Non-recursive listing of one workspace directory for the sidebar tree:
+/// subdirectories (minus ignored ones) plus reader-allowlist files, directories
+/// first and each group naturally sorted. The frontend expands lazily, one
+/// level per call, so huge trees only cost what the user actually opens.
+#[tauri::command]
+pub fn list_workspace_dir(path: String) -> Result<Vec<WorkspaceEntry>, String> {
+    let dir = Path::new(&path);
+    if !dir.is_dir() {
+        return Err(t!("workspace.not_a_dir", path = path).into_owned());
+    }
+    let entries = fs::read_dir(dir).map_err(|e| t!("read.failed", error = e).into_owned())?;
+    let mut dirs: Vec<WorkspaceEntry> = Vec::new();
+    let mut files: Vec<WorkspaceEntry> = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let p = entry.path();
+        match entry.file_type() {
+            Ok(ft) if ft.is_dir() => {
+                if is_ignored_workspace_dir(&name) {
+                    continue;
+                }
+                dirs.push(WorkspaceEntry {
+                    name,
+                    path: p.to_string_lossy().into_owned(),
+                    is_dir: true,
+                });
+            }
+            Ok(ft) if ft.is_file() && has_allowed_extension(&p) => {
+                files.push(WorkspaceEntry {
+                    name,
+                    path: p.to_string_lossy().into_owned(),
+                    is_dir: false,
+                });
+            }
+            _ => {}
+        }
+    }
+    let sort = |list: &mut Vec<WorkspaceEntry>| {
+        list.sort_by(|a, b| natural_cmp(&a.name, &b.name));
+    };
+    sort(&mut dirs);
+    sort(&mut files);
+    dirs.extend(files);
+    Ok(dirs)
 }
 
 /// Image extensions the editor's "insert image" action accepts.
@@ -531,6 +642,51 @@ mod tests {
             strip_verbatim_prefix(r"C:\Users\hugo\a.md".to_string()),
             r"C:\Users\hugo\a.md"
         );
+    }
+}
+
+#[cfg(test)]
+mod workspace_tests {
+    use super::test_support::scratch;
+    use super::{list_workspace_dir, natural_cmp};
+    use std::cmp::Ordering;
+    use std::fs;
+
+    #[test]
+    fn natural_order_is_numeric_for_digit_runs() {
+        assert_eq!(natural_cmp("a2", "a10"), Ordering::Less);
+        assert_eq!(natural_cmp("10", "9"), Ordering::Greater);
+        assert_eq!(natural_cmp("a02", "a2"), Ordering::Less, "tie falls back to bytes");
+        assert_eq!(natural_cmp("Note", "note"), Ordering::Less, "case tie falls back to bytes");
+        assert_eq!(natural_cmp("第2章", "第10章"), Ordering::Less);
+    }
+
+    #[test]
+    fn listing_hides_junk_dirs_shows_dirs_first_and_sorts_naturally() {
+        let dir = scratch("ws-list");
+        fs::create_dir_all(dir.join("notes")).unwrap();
+        fs::create_dir_all(dir.join(".git")).unwrap();
+        fs::create_dir_all(dir.join("node_modules")).unwrap();
+        fs::create_dir_all(dir.join(".hidden")).unwrap();
+        fs::write(dir.join("b.md"), "x").unwrap();
+        fs::write(dir.join("a10.md"), "x").unwrap();
+        fs::write(dir.join("a2.md"), "x").unwrap();
+        fs::write(dir.join("pic.png"), "x").unwrap();
+        fs::write(dir.join("notes").join("deep.md"), "x").unwrap();
+
+        let got = list_workspace_dir(dir.to_string_lossy().into_owned()).unwrap();
+        let names: Vec<&str> = got.iter().map(|e| e.name.as_str()).collect();
+        // 递归内容不展开(lazy),非 md 文件不出现,隐藏/node_modules 被跳过
+        assert_eq!(names, vec!["notes", "a2.md", "a10.md", "b.md"]);
+        assert!(got[0].is_dir);
+        assert!(!got[1].is_dir);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn listing_refuses_a_non_directory() {
+        assert!(list_workspace_dir("/definitely/not/a/dir/openmd".into()).is_err());
     }
 }
 

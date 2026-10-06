@@ -1,5 +1,6 @@
 {
   "misc.openFile": "開啟檔案",
+  "misc.openFolder": "開啟資料夾",
   "misc.settings": "設定",
   "misc.recentFiles": "最近開啟",
   "misc.clearRecent": "清空最近開啟",

@@ -39,6 +39,9 @@ path:
   cwd_failed: "現在のディレクトリを特定できません: %{error}"
   invalid_utf8: "パスが有効な UTF-8 ではありません: %{path}"
 
+workspace:
+  not_a_dir: "フォルダではありません: %{path}"
+
 image:
   not_image: "画像ファイルではありません: %{path}"
   not_found: "画像が見つかりません: %{path}"

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import i18n from "i18next";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { openUrl, openPath } from "@tauri-apps/plugin-opener";
 import {
@@ -27,6 +28,7 @@ import {
   resolveLocalPath,
 } from "../renderer/pipeline";
 import { articleToMarkdown } from "../renderer/backconvert";
+import { renderMermaidBlocks } from "../renderer/mermaid";
 import { applyLinePatches, collectPatches, patchFromBlock, shiftForLine } from "../renderer/previewEdit";
 import {
   copyImage,
@@ -251,6 +253,8 @@ function splitHighlightedLines(html: string): string[] {
 export function MarkdownView({ tab }: { tab: Tab }) {
   const { t } = useTranslation();
   const { fontSize, fullWidth, viewMode, setViewMode, editMode, toggleEditMode } = useSettings();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();
   const setScrollInStore = useTabs((s) => s.setScroll);
   const updateDraft = useTabs((s) => s.updateDraft);
@@ -363,6 +367,15 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     const article = articleRef.current;
     if (!article || !tab.path) return;
 
+    // Mermaid 图表:阅读态把 ```mermaid 代码块替换成渲染好的 SVG;编辑态
+    // 保留可编辑代码块(改完切回阅读即见新图)。主题切换后 effect 重跑,
+    // 已渲染容器按存下的源码重建。异步进行,容器被重渲染替换后自动放弃。
+    if (!editing) {
+      void renderMermaidBlocks(article, isDark).catch((e) =>
+        console.error("mermaid render failed:", e),
+      );
+    }
+
     // 兜底自愈:若有图片请求仍抢在白名单写入之前到达(未被上层路径覆盖的
     // 时序),它会被拒且 <img> 不重试。白名单就绪后,对仍处于失败状态
     // (complete 且 naturalWidth 为 0)的本地图重发一次请求。
@@ -399,6 +412,8 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
     // Code copy buttons.
     article.querySelectorAll("pre").forEach((pre) => {
+      // mermaid 错误框里的 pre 是提示信息,不是可复制的源码
+      if (pre.closest(".md-mermaid")) return;
       if (pre.querySelector(".code-copy-btn")) return;
       const btn = document.createElement("button");
       btn.className = "code-copy-btn";
@@ -450,7 +465,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       // 卸载(切走/回首页)时清空目录;重挂载会立即重新提取
       setEntries([]);
     };
-  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, assetPaths, setEntries, setActive]);
+  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, isDark, assetPaths, setEntries, setActive]);
 
   // 预览编辑:contentEditable 的变更 → 段落级映射回源码草稿。预览 DOM 不重渲染,
   // 光标不丢;400ms 去抖把同一块的多条变更合并成一次替换。行号在 patch 间会漂移,

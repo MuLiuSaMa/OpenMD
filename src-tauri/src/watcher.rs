@@ -75,6 +75,10 @@ type FsDebouncer = Debouncer<notify::RecommendedWatcher>;
 pub struct WatcherState {
     debouncer: Mutex<Option<FsDebouncer>>,
     set: Arc<Mutex<WatchSet>>,
+    /// The open workspace folder's recursive watch (sidebar tree). Independent
+    /// of the per-file `set` above: open tabs keep their own `file-changed`
+    /// path, this one feeds the tree with `workspace-changed`.
+    workspace: Mutex<Option<(PathBuf, FsDebouncer)>>,
 }
 
 impl Default for WatcherState {
@@ -82,6 +86,7 @@ impl Default for WatcherState {
         Self {
             debouncer: Mutex::new(None),
             set: Arc::new(Mutex::new(WatchSet::default())),
+            workspace: Mutex::new(None),
         }
     }
 }
@@ -180,9 +185,91 @@ pub fn stop_watching(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ---- 工作区(文件夹工作区侧栏的整棵递归监听) ----
+
+/// Whether a change is interesting for the workspace tree: under the root and
+/// either a readable text document or a directory / extension-less path.
+/// Directory *creates* answer `is_dir`, but *removes* no longer do — the
+/// extension-less fallback keeps folder deletions visible. Pure so it can be
+/// tested without an app handle.
+pub(crate) fn workspace_event_relevant(root: &Path, path: &Path) -> bool {
+    if !path.starts_with(root) {
+        return false;
+    }
+    if path.is_dir() || path.extension().is_none() {
+        return true;
+    }
+    crate::commands::has_allowed_extension(path)
+}
+
+fn make_workspace_debouncer(root: PathBuf, app: &AppHandle) -> Result<FsDebouncer, String> {
+    let app_handle = app.clone();
+    let root_for_events = root;
+    new_debouncer(
+        Duration::from_millis(500),
+        move |res: Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>| match res {
+            Ok(events) => {
+                for event in events {
+                    if event.kind != DebouncedEventKind::Any {
+                        continue;
+                    }
+                    if workspace_event_relevant(&root_for_events, &event.path) {
+                        let _ = app_handle.emit(
+                            "workspace-changed",
+                            serde_json::json!({
+                                "root": root_for_events.to_string_lossy(),
+                                "path": event.path.to_string_lossy(),
+                            }),
+                        );
+                    }
+                }
+            }
+            Err(e) => eprintln!("Workspace watch error: {:?}", e),
+        },
+    )
+    .map_err(|e| format!("Failed to create workspace watcher: {}", e))
+}
+
+/// Start delivering `workspace-changed` events for everything under `path`
+/// (recursive). One workspace at a time — watching a new root replaces the
+/// old watch; re-watching the same root is a no-op.
+#[tauri::command]
+pub fn watch_workspace(app: AppHandle, path: String) -> Result<(), String> {
+    let state = app.state::<WatcherState>();
+    let mut slot = state.workspace.lock().map_err(|e| e.to_string())?;
+    let root = PathBuf::from(&path);
+    if let Some((existing, _)) = slot.as_ref() {
+        if *existing == root {
+            return Ok(());
+        }
+    }
+    let mut debouncer = make_workspace_debouncer(root.clone(), &app)?;
+    debouncer
+        .watcher()
+        .watch(&root, notify::RecursiveMode::Recursive)
+        .map_err(|e| format!("Failed to watch workspace: {}", e))?;
+    *slot = Some((root, debouncer));
+    Ok(())
+}
+
+/// Stop the workspace watch (workspace closed / replaced). No-op when a
+/// different root is watched, so a stale late call can't kill a live watch.
+#[tauri::command]
+pub fn unwatch_workspace(app: AppHandle, path: String) -> Result<(), String> {
+    let state = app.state::<WatcherState>();
+    let mut slot = state.workspace.lock().map_err(|e| e.to_string())?;
+    if let Some((existing, _)) = slot.as_ref() {
+        if *existing == PathBuf::from(&path) {
+            // Debouncer dropped → unwatch + its thread released.
+            *slot = None;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use super::WatchSet;
+    use super::{WatchSet, workspace_event_relevant};
     use std::path::{Path, PathBuf};
 
     // 用 POSIX 绝对路径而不是字面量 "C:\\docs\\a.md"：Windows 路径在 Unix 上
@@ -233,5 +320,36 @@ mod tests {
         set.clear();
         assert!(set.is_empty());
         assert_eq!(set.watched(Path::new("/docs/a.md")), None);
+    }
+
+    #[test]
+    fn workspace_events_are_bounded_to_documents_and_dirs_under_the_root() {
+        let root = Path::new("/ws");
+        for hit in [
+            "/ws/a.md",
+            "/ws/deep/nested/a.markdown",
+            "/ws/notes.txt",
+            "/ws/sub",      // 无扩展名:目录创建/删除都靠它进树
+            "/ws/a.MD",     // 扩展名大小写不敏感
+            "/ws",          // root 自身事件 → 整树刷新,无害
+            "/ws/Makefile", // 无扩展名文件改动也会刷新树,幂等无害
+        ] {
+            assert!(workspace_event_relevant(root, Path::new(hit)), "{hit} should be relevant");
+        }
+        for miss in [
+            "/ws/pic.png",
+            "/ws/script.exe",
+            "/ws2/a.md", // 前缀同串但不是同一目录
+            "/other/a.md",
+        ] {
+            assert!(!workspace_event_relevant(root, Path::new(miss)), "{miss} should be noise");
+        }
+    }
+
+    #[test]
+    fn the_workspace_prefix_boundary_is_component_wise() {
+        // "/ws2" must not count as inside "/ws", while "/ws/sub" must.
+        assert!(!workspace_event_relevant(Path::new("/ws"), Path::new("/ws2/sub/a.md")));
+        assert!(workspace_event_relevant(Path::new("/ws"), Path::new("/ws/sub/a.md")));
     }
 }

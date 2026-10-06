@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
-import { Box, Button, Flex, IconButton, Text, VStack } from "@chakra-ui/react";
-import { FileText, FolderOpen, Settings, X } from "lucide-react";
+import { Box, Button, Flex, HStack, IconButton, Text, VStack } from "@chakra-ui/react";
+import { FileText, FolderOpen, FolderTree, Settings, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { useTabs } from "../stores/tabs";
 import { useRecent, type RecentFile } from "../stores/recent";
-import { openFileDialog } from "../tauri/api";
+import { useWorkspace } from "../stores/workspace";
+import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { viewInAnimation } from "../theme/theme";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { SettingsModal } from "./SettingsModal";
@@ -62,6 +63,16 @@ export function EmptyState() {
     }
   };
 
+  // 打开文件夹为工作区:首页先记住(持久化),打开任意文档后侧栏文件 Tab 可见。
+  const handleOpenFolder = async () => {
+    try {
+      const picked = await openFolderDialog();
+      if (picked) await useWorkspace.getState().openFolder(picked);
+    } catch {
+      /* 用户取消或浏览器环境 */
+    }
+  };
+
   const wordmark = (
     <img
       src={isDark ? "/wordmark-white.png" : "/wordmark-black.png"}
@@ -94,6 +105,33 @@ export function EmptyState() {
       <FolderOpen size={15} />
       {t("misc.openFile")}
     </Button>
+  );
+
+  const folderButton = (
+    <Button
+      size="sm"
+      variant="outline"
+      bg="transparent"
+      borderColor="fg"
+      color="fg"
+      borderRadius="8px"
+      px={6}
+      h="38px"
+      _hover={{ bg: "fg", color: "bg" }}
+      _active={{ transform: "scale(0.98)" }}
+      transition="all 0.15s"
+      onClick={handleOpenFolder}
+    >
+      <FolderTree size={15} />
+      {t("misc.openFolder")}
+    </Button>
+  );
+
+  const actionButtons = (
+    <HStack gap={3}>
+      {openButton}
+      {folderButton}
+    </HStack>
   );
 
   // 首页无标题栏:顶部一条透明拖拽区(双击可最大化),右上角窗口控制按钮。
@@ -147,7 +185,7 @@ export function EmptyState() {
         {settingsButton}
         <VStack gap={12}>
           {wordmark}
-          {openButton}
+          {actionButtons}
         </VStack>
         <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </Box>
@@ -171,7 +209,7 @@ export function EmptyState() {
         {/* 左侧:Logo + 打开按钮 */}
         <VStack gap={10} flexShrink={0}>
           {wordmark}
-          {openButton}
+          {actionButtons}
         </VStack>
 
         {/* 右侧:最近打开的文档 */}

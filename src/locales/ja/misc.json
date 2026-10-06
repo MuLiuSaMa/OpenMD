@@ -1,5 +1,6 @@
 {
   "misc.openFile": "ファイルを開く",
+  "misc.openFolder": "フォルダを開く",
   "misc.settings": "設定",
   "misc.recentFiles": "最近使ったファイル",
   "misc.clearRecent": "最近のファイルを消去",

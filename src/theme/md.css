@@ -142,6 +142,45 @@
   white-space: pre;
 }
 
+/* Mermaid 图表容器(后处理把 pre>code.language-mermaid 替换而来) */
+.md-body .md-mermaid {
+  position: relative;
+  margin: 1.1em 0;
+  padding: 1em;
+  border-radius: 10px;
+  border: 1px solid #e4e7eb;
+  background: #ffffff;
+  text-align: center;
+  overflow-x: auto;
+}
+.md-body .md-mermaid svg {
+  /* mermaid 在 svg 内联 style 里写了 max-width:自然宽度,窄容器下会溢出;
+     样式表 !important 可以压过内联声明 */
+  max-width: 100% !important;
+  height: auto;
+}
+.md-body .md-mermaid-error {
+  text-align: start;
+}
+.md-body .md-mermaid-error-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #57606a;
+  margin-bottom: 0.4em;
+}
+.md-body .md-mermaid-error pre {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.8em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #1f2328;
+}
+
 /* 复制按钮 */
 .md-body .code-copy-btn {
   position: absolute;
@@ -350,6 +389,20 @@
 [data-theme="dark"] .md-body pre {
   border-color: #2d333b;
   background: #161b22;
+}
+
+.dark .md-body .md-mermaid,
+[data-theme="dark"] .md-body .md-mermaid {
+  border-color: #2d333b;
+  background: #161b22;
+}
+.dark .md-body .md-mermaid-error-label,
+[data-theme="dark"] .md-body .md-mermaid-error-label {
+  color: #8b949e;
+}
+.dark .md-body .md-mermaid-error pre,
+[data-theme="dark"] .md-body .md-mermaid-error pre {
+  color: #c9d1d9;
 }
 
 .dark .md-body .code-copy-btn,

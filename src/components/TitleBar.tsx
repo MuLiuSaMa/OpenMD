@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, Button, Grid, HStack, IconButton, Input, Separator } from "@chakra-ui/react";
 import { useTheme } from "next-themes";
-import { FolderOpen, Minus, Moon, PanelLeft, Plus, Settings, StretchHorizontal, Sun } from "lucide-react";
+import { FolderOpen, FolderTree, Minus, Moon, PanelLeft, Plus, Settings, StretchHorizontal, Sun } from "lucide-react";
 import { useSettings } from "../stores/settings";
-import { openFileDialog } from "../tauri/api";
+import { useWorkspace } from "../stores/workspace";
+import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
 import { IS_MACOS } from "../utils/platform";
@@ -34,7 +35,8 @@ function ThemeToggle() {
 
 export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void }) {
   const { t } = useTranslation();
-  const { fontSize, setFontSize, tocOpen, toggleToc, fullWidth, toggleFullWidth } = useSettings();
+  const { fontSize, setFontSize, tocOpen, toggleToc, sidebarTab, setSidebarTab, fullWidth, toggleFullWidth } =
+    useSettings();
   const openPaths = useTabs((s) => s.openPath);
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
@@ -63,6 +65,30 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
     } catch (e) {
       onOpenError?.(String(e));
     }
+  };
+
+  // 侧栏按钮与 Tab 联动:侧栏开着但显示另一个 Tab 时,点击是切换而不是关闭。
+  const filesShown = tocOpen && sidebarTab === "files";
+  const tocShown = tocOpen && sidebarTab === "toc";
+  const handleWorkspace = async () => {
+    if (filesShown) {
+      toggleToc();
+      return;
+    }
+    setSidebarTab("files");
+    if (!tocOpen) toggleToc();
+    const picked = await openFolderDialog().catch((e) => {
+      onOpenError?.(String(e));
+      return null;
+    });
+    if (picked) await useWorkspace.getState().openFolder(picked);
+  };
+  const handleTocButton = () => {
+    if (tocOpen && sidebarTab === "files") {
+      setSidebarTab("toc");
+      return;
+    }
+    toggleToc();
   };
 
   // 三列网格:左 Logo、中功能、右窗口控制,保证功能组在窗口中真正居中。
@@ -116,6 +142,18 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           >
             <FolderOpen size={15} />
             {t("shell.openFile")}
+          </Button>
+
+          <Button
+            aria-label={t("shell.openFolderShortcut")}
+            title={t("shell.openFolderShortcut")}
+            variant={filesShown ? "subtle" : "ghost"}
+            size="sm"
+            gap={1.5}
+            onClick={() => void handleWorkspace()}
+          >
+            <FolderTree size={15} />
+            {t("shell.openFolder")}
           </Button>
 
           <Separator orientation="vertical" h="20px" />
@@ -175,10 +213,10 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           <Button
             aria-label={t("shell.tocBar")}
             title={t("shell.tocBarShortcut")}
-            variant={tocOpen ? "subtle" : "ghost"}
+            variant={tocShown ? "subtle" : "ghost"}
             size="sm"
             gap={1.5}
-            onClick={toggleToc}
+            onClick={handleTocButton}
           >
             <PanelLeft size={15} />
             {t("shell.toc")}

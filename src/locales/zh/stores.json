@@ -3,6 +3,7 @@
   "stores.tabs.browserPreviewOpenError": "浏览器预览模式只能打开 public/ 下的文件(如 sample.md):{{path}}",
   "stores.tabs.overwriteDiskChanged": "文件已在磁盘上被修改。仍要用编辑内容覆盖吗?",
   "stores.api.openFileDialogTitle": "打开 Markdown 文件",
+  "stores.api.openFolderDialogTitle": "选择工作区文件夹",
   "stores.api.selectImageDialogTitle": "选择图片",
   "stores.api.imageFilterName": "图片"
 }

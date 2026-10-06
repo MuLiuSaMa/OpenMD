@@ -4,7 +4,11 @@ import { Box, Text, VStack } from "@chakra-ui/react";
 import { setActiveHeading, useToc } from "../stores/toc";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 
-export function TocSidebar({ open }: { open: boolean }) {
+/**
+ * 统一侧栏的「目录」Tab 内容:当前文档的标题大纲。
+ * (外层的宽度过渡动画与 Tab 切换在 Sidebar.tsx。)
+ */
+export function TocPanel() {
   const { t } = useTranslation();
   const { entries, activeId } = useToc();
   const listRef = useRef<HTMLDivElement>(null);
@@ -51,17 +55,9 @@ export function TocSidebar({ open }: { open: boolean }) {
   );
 
   return (
-    // 常驻挂载,通过宽度过渡实现展开/收起动画;收起时隐藏右边框。
-    <Box
-      w={open ? "250px" : "0px"}
-      flexShrink={0}
-      borderRightWidth="1px"
-      borderColor={open ? "border.subtle" : "transparent"}
-      position="relative"
-      overflow="hidden"
-      transition="width 0.25s ease, border-color 0.25s ease"
-      _motionReduce={{ transition: "none" }}
-    >
+    // 悬浮滚动条是滚动元素的兄弟节点:宿主 position:relative,滚动元素自身
+    // 挂 no-scrollbar,由 FloatingScrollbar 叠加绘制。
+    <Box position="relative" w="250px" h="100%">
       <Box
         ref={listRef}
         className="no-scrollbar"
