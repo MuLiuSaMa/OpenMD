@@ -47,7 +47,8 @@
           "libsoup-3.0-0",
           "libayatana-appindicator3-1",
           "libssl3t64 | libssl3",
-          "libc6 (>= 2.39)"
+          "libc6 (>= 2.39)",
+          "ca-certificates"
         ]
       },
       "rpm": {
@@ -69,7 +70,8 @@
           "libgcc_s.so.1()(64bit)",
           "libm.so.6()(64bit)",
           "libc.so.6()(64bit)",
-          "libc.so.6(GLIBC_2.39)(64bit)"
+          "libc.so.6(GLIBC_2.39)(64bit)",
+          "ca-certificates"
         ]
       }
     },
