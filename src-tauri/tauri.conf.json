@@ -33,12 +33,47 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["app", "deb", "rpm", "appimage"],
     "category": "Utility",
     "shortDescription": "简洁 美观 高效的 Markdown 查看器",
     "copyright": "OpenMD",
     "macOS": {
       "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libsoup-3.0-0",
+          "libayatana-appindicator3-1",
+          "libssl3t64 | libssl3",
+          "libc6 (>= 2.39)",
+          "ca-certificates"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "libayatana-appindicator3.so.1()(64bit)",
+          "libwebkit2gtk-4.1.so.0()(64bit)",
+          "libjavascriptcoregtk-4.1.so.0()(64bit)",
+          "libsoup-3.0.so.0()(64bit)",
+          "libgtk-3.so.0()(64bit)",
+          "libgdk-3.so.0()(64bit)",
+          "libgdk_pixbuf-2.0.so.0()(64bit)",
+          "libcairo.so.2()(64bit)",
+          "libgobject-2.0.so.0()(64bit)",
+          "libglib-2.0.so.0()(64bit)",
+          "libgio-2.0.so.0()(64bit)",
+          "libdbus-1.so.3()(64bit)",
+          "libssl.so.3()(64bit)",
+          "libcrypto.so.3()(64bit)",
+          "libgcc_s.so.1()(64bit)",
+          "libm.so.6()(64bit)",
+          "libc.so.6()(64bit)",
+          "libc.so.6(GLIBC_2.39)(64bit)",
+          "ca-certificates"
+        ]
+      }
     },
     "icon": [
       "icons/128x128@2x.png",

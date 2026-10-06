@@ -67,3 +67,6 @@ Desktop.ini
 
 # AI workspace data
 .workbuddy-ai
+
+# Linux package validation evidence
+/artifacts/linux-packaging/

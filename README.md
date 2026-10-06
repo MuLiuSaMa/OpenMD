@@ -100,6 +100,33 @@ pnpm tauri build
 # 产物：src-tauri/target/release/openmd.exe
 ```
 
+### Linux
+
+主程序基于 Tauri，本体跨平台。Linux 上通过系统的 WebKitGTK 渲染，需先安装 WebKitGTK 开发库（Debian/Ubuntu/Mint）：
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+pnpm install
+pnpm tauri build
+# 产物：
+#   src-tauri/target/release/openmd                    可执行文件
+#   src-tauri/target/release/bundle/deb/*.deb          Debian/Ubuntu/Mint 安装包
+#   src-tauri/target/release/bundle/rpm/*.rpm          Fedora/openSUSE/RHEL 安装包
+#   src-tauri/target/release/bundle/appimage/*.AppImage 免安装单文件（chmod +x 后直接运行）
+```
+
+Fedora/Arch 等其他发行版请参考 Tauri 官方文档安装对应的 `webkit2gtk-4.1` 开发包。
+
+安装包的运行依赖在 `src-tauri/tauri.conf.json` 中声明；用户安装时由发行版的包管理器解析，不能用开发机上的 `-dev` 包代替验证。当前 64 位构建声明 glibc 2.39 为最低运行要求；支持更旧系统需要在更旧的兼容环境重新构建并调整依赖。
+
+使用 Docker 自动验证干净环境安装及启动、最小化、隐藏到托盘、恢复和退出流程：
+
+```bash
+bash tests/linux-packaging/run.sh
+```
+
+Dockerfile、脚本及说明集中在 [tests/linux-packaging](tests/linux-packaging/README.md)，日志、截图和录像输出到已被 Git 忽略的 `artifacts/linux-packaging/`。测试环境为 Ubuntu 24.04、Fedora 44 和 openSUSE Leap 16.0，桌面使用独立的 X11 / Openbox / Xfce 托盘会话。
+
 ### macOS
 
 主程序基于 Tauri，本体跨平台，Mac 上可直接构建原生 `.app`：
