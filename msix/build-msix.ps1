@@ -40,7 +40,7 @@ function Invoke-Tool {
     if ($LASTEXITCODE -ne 0) { throw "$([IO.Path]::GetFileName($Exe)) 失败(退出码 $LASTEXITCODE)" }
 }
 
-# 1. 版本号:tauri.conf.json 的三段版本补齐为 MSIX 四段(1.0.2 -> 1.0.2.0)
+# 1. 版本号:tauri.conf.json 的三段版本补齐为 MSIX 四段(1.0.3 -> 1.0.3.0)
 $ConfPath = Join-Path $Root "src-tauri\tauri.conf.json"
 $Version = if ($VersionOverride) { $VersionOverride } else {
     # PS5.1 默认按 ANSI 读文件,配置含中文必须显式 UTF8

@@ -10,6 +10,8 @@ import {
   Menu,
   Portal,
   Separator,
+  Slider,
+  Text,
 } from "@chakra-ui/react";
 import { useTheme } from "next-themes";
 import {
@@ -25,7 +27,7 @@ import {
   StretchHorizontal,
   Sun,
 } from "lucide-react";
-import { useSettings } from "../stores/settings";
+import { useSettings, MAX_CONTENT_PADDING } from "../stores/settings";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
@@ -58,7 +60,7 @@ function ThemeToggle() {
 
 export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void }) {
   const { t } = useTranslation();
-  const { fontSize, setFontSize, tocOpen, toggleToc, sidebarTab, setSidebarTab, fullWidth, toggleFullWidth } =
+  const { fontSize, setFontSize, tocOpen, toggleToc, sidebarTab, setSidebarTab, contentPadding, setContentPadding } =
     useSettings();
   const openPaths = useTabs((s) => s.openPath);
   const { resolvedTheme } = useTheme();
@@ -103,6 +105,64 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
 
   useEffect(() => cancelOpenMenuClose, []);
 
+  // 「边距」按钮的调节面板:悬停展开、离开延迟收起;开关都走 slide-fade 动画(与"打开"菜单一致)。
+  const [paddingPhase, setPaddingPhase] = useState<"closed" | "open" | "closing">("closed");
+  const paddingCloseTimer = useRef<number | null>(null);
+  const paddingExitTimer = useRef<number | null>(null);
+  // 包住"按钮 + 面板"的容器:面板是它的 DOM 子节点,用 :hover 判断指针是否还在控件范围内。
+  const paddingWrapRef = useRef<HTMLDivElement | null>(null);
+
+  const clearPaddingTimers = () => {
+    if (paddingCloseTimer.current !== null) {
+      window.clearTimeout(paddingCloseTimer.current);
+      paddingCloseTimer.current = null;
+    }
+    if (paddingExitTimer.current !== null) {
+      window.clearTimeout(paddingExitTimer.current);
+      paddingExitTimer.current = null;
+    }
+  };
+
+  const showPaddingPanel = () => {
+    clearPaddingTimers();
+    setPaddingPhase("open");
+  };
+
+  // 收起分两步:先切到 closing 播退场动画,动画结束再真正卸载。
+  const closePaddingPanel = () => {
+    clearPaddingTimers();
+    setPaddingPhase((p) => (p === "closed" ? p : "closing"));
+    paddingExitTimer.current = window.setTimeout(() => {
+      paddingExitTimer.current = null;
+      setPaddingPhase("closed");
+    }, 120);
+  };
+
+  const schedulePaddingClose = () => {
+    clearPaddingTimers();
+    paddingCloseTimer.current = window.setTimeout(() => {
+      paddingCloseTimer.current = null;
+      closePaddingPanel();
+    }, 120);
+  };
+
+  // 拖滑块时指针会滑出面板:按住期间不收起,松手后再判断是否已真正离开。
+  const handlePaddingLeave = (e: { buttons: number }) => {
+    if (e.buttons !== 0) return;
+    schedulePaddingClose();
+  };
+
+  useEffect(() => clearPaddingTimers, []);
+
+  useEffect(() => {
+    const onPointerUp = () => {
+      const el = paddingWrapRef.current;
+      if (el && !el.matches(":hover")) closePaddingPanel();
+    };
+    window.addEventListener("pointerup", onPointerUp);
+    return () => window.removeEventListener("pointerup", onPointerUp);
+  }, []);
+
   const handleOpen = async () => {
     try {
       const paths = await openFileDialog();
@@ -142,7 +202,7 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
     <Box
       as="header"
       h="46px"
-      px={4}
+      // 右侧不留内边距:窗口按钮要贴到右上角,留白会让角落点不到关闭。
       // macOS 的 titleBarStyle:"Overlay" 会把红绿灯按钮叠在内容左上角,
       // 这里留出空档避免压住 Logo;其他平台保持原来的 3px。
       paddingLeft={IS_MACOS ? "78px" : "3px"}
@@ -311,17 +371,98 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             {t("shell.toc")}
           </Button>
 
-          <Button
-            aria-label={t("shell.fullWidth")}
-            title={t("shell.fullWidthTitle")}
-            variant={fullWidth ? "subtle" : "ghost"}
-            size="sm"
-            gap={1.5}
-            onClick={toggleFullWidth}
+          <Box
+            ref={paddingWrapRef}
+            position="relative"
+            display="flex"
+            alignItems="center"
+            onPointerEnter={showPaddingPanel}
+            onPointerLeave={handlePaddingLeave}
           >
-            <StretchHorizontal size={15} />
-            {t("shell.fullWidthLabel")}
-          </Button>
+            <Button
+              aria-label={t("shell.margin")}
+              title={t("shell.marginTitle")}
+              variant="ghost"
+              size="sm"
+              gap={1.5}
+              onClick={showPaddingPanel}
+            >
+              <StretchHorizontal size={15} />
+              {t("shell.margin")}
+              <ChevronDown size={12} opacity={0.55} />
+            </Button>
+
+            {/* 悬停展开的边距调节面板:实时改预览左右内边距。
+                animationFillMode="both" 让退场动画播完后停在末态(opacity 0):
+                Chakra 的 animationStyle 只给 animationName、不带 fill-mode,
+                动画结束到定时卸载之间元素会回弹到不透明,肉眼就是"闪一下"。 */}
+            {paddingPhase !== "closed" && (
+              <Box
+                data-placement="bottom"
+                animationStyle={paddingPhase === "open" ? "slide-fade-in" : "slide-fade-out"}
+                animationDuration={paddingPhase === "open" ? "fast" : "faster"}
+                animationFillMode="both"
+                position="absolute"
+                top="100%"
+                left="50%"
+                transform="translateX(-50%)"
+                mt={2}
+                zIndex={1000}
+                minW="220px"
+                bg="bg"
+                borderWidth="1px"
+                borderColor="border.subtle"
+                borderRadius="10px"
+                boxShadow="md"
+                p={3}
+                onPointerEnter={showPaddingPanel}
+                onPointerLeave={handlePaddingLeave}
+              >
+                <HStack justify="space-between" mb={2}>
+                  <Text fontSize="xs" color="fg.muted">
+                    {t("shell.contentPadding")}
+                  </Text>
+                  <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
+                    {contentPadding}px
+                  </Text>
+                </HStack>
+                <Slider.Root
+                  min={0}
+                  max={MAX_CONTENT_PADDING}
+                  step={4}
+                  size="sm"
+                  value={[contentPadding]}
+                  onValueChange={(e) => setContentPadding(e.value[0])}
+                >
+                  <Slider.Control>
+                    <Slider.Track>
+                      <Slider.Range />
+                    </Slider.Track>
+                    <Slider.Thumbs />
+                  </Slider.Control>
+                </Slider.Root>
+                <HStack gap={1} mt={2}>
+                  {(
+                    [
+                      { v: 0, label: t("shell.paddingNarrow") },
+                      { v: 200, label: t("shell.paddingMedium") },
+                      { v: 400, label: t("shell.paddingWide") },
+                    ] as const
+                  ).map((opt) => (
+                    <Button
+                      key={opt.v}
+                      size="xs"
+                      flex={1}
+                      variant={contentPadding === opt.v ? "subtle" : "ghost"}
+                      onClick={() => setContentPadding(opt.v)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
+                </HStack>
+              </Box>
+            )}
+          </Box>
 
           <Button
             aria-label={t("shell.settings")}

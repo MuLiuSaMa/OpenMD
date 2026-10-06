@@ -10,10 +10,14 @@ const config = defineConfig({
   globalCss: {
     html: {
       colorPalette: "gray",
+      // 页面兜底底色:最大化/还原窗口时 WebView2 会先清一帧再重绘,
+      // 没有底色就会闪白。自定义背景图时根容器是透明的,更容易暴露出来。
+      bg: "bg.canvas",
     },
     body: {
       fontFamily: APP_FONTS,
       overflow: "hidden",
+      bg: "bg.canvas",
     },
   },
   theme: {
@@ -44,7 +48,9 @@ export const viewInAnimation = {
   animationName: "view-in",
   animationDuration: "0.3s",
   animationTimingFunction: "ease-out",
-  animationFillMode: "both",
+  // 用 backwards 而不是 both:动画结束后不再保留末态的常驻 transform。
+  // 常驻 transform 会把容器提升为合成层,窗口最大化/还原时重新栅格化容易闪。
+  animationFillMode: "backwards",
   _motionReduce: { animation: "none" },
 } as const;
 

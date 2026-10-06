@@ -12,6 +12,7 @@ import { MarkdownView } from "./components/MarkdownView";
 import { EmptyState } from "./components/EmptyState";
 import { StatusBar } from "./components/StatusBar";
 import { UpdatePopup } from "./components/UpdatePopup";
+import { AppBackground } from "./components/AppBackground";
 import { CloseDialog } from "./components/CloseDialog";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { HOME_TAB_ID, useTabs } from "./stores/tabs";
@@ -46,7 +47,7 @@ export default function App() {
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const refreshPath = useTabs((s) => s.refreshPath);
-  const { tocOpen } = useSettings();
+  const { tocOpen, backgroundImage } = useSettings();
   const [openError, setOpenError] = useState<string | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   // 托盘"检查更新"的结果提示(已是最新/失败);发现新版本时直接弹更新弹窗
@@ -283,7 +284,14 @@ export default function App() {
   // 启动排水未完成前只渲染空白底色(正在打开关联文件),避免首页闪现。
 
   return (
-    <Flex direction="column" h="100vh" bg="bg.canvas" color="fg">
+    <Flex
+      direction="column"
+      h="100vh"
+      // 有自定义背景图时让出底色,露出底层的模糊图片;无背景时保持原来的画布色。
+      bg={backgroundImage ? "transparent" : "bg.canvas"}
+      color="fg"
+    >
+      <AppBackground />
       {!startupReady ? (
         <Box flex={1} bg="bg" />
       ) : isHome ? (

@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { useTabs } from "../stores/tabs";
 import { useRecent, type RecentFile } from "../stores/recent";
 import { useWorkspace } from "../stores/workspace";
+import { useSettings } from "../stores/settings";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
 import { viewInAnimation } from "../theme/theme";
@@ -35,6 +36,8 @@ export function EmptyState() {
   const clearRecents = useRecent((s) => s.clear);
   const recentListRef = useRef<HTMLDivElement>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 设了自定义背景图时首页让出底色,别把底层模糊图盖住。
+  const backgroundImage = useSettings((s) => s.backgroundImage);
   // next-themes 首帧 resolvedTheme 为 undefined,默认按暗色处理。
   const isDark = resolvedTheme !== "light";
 
@@ -144,11 +147,11 @@ export function EmptyState() {
       top={0}
       left={0}
       right={0}
-      h="42px"
+      h="46px"
       zIndex={10}
       data-tauri-drag-region=""
     >
-      <Box position="absolute" top={1.5} right={2} data-tauri-drag-region="">
+      <Box position="absolute" top={0} right={0} data-tauri-drag-region="">
         <WindowControls />
       </Box>
     </Box>
@@ -182,7 +185,7 @@ export function EmptyState() {
     return (
       <Box
         flex={1}
-        bg="bg"
+        bg={backgroundImage ? "transparent" : "bg"}
         display="flex"
         alignItems="center"
         justifyContent="center"
@@ -203,7 +206,7 @@ export function EmptyState() {
   return (
     <Box
       flex={1}
-      bg="bg"
+      bg={backgroundImage ? "transparent" : "bg"}
       display="flex"
       alignItems="center"
       justifyContent="center"

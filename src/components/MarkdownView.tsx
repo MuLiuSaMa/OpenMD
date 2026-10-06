@@ -261,7 +261,7 @@ function splitHighlightedLines(html: string): string[] {
 
 export function MarkdownView({ tab }: { tab: Tab }) {
   const { t } = useTranslation();
-  const { fontSize, fullWidth, viewMode, setViewMode, editMode, toggleEditMode } = useSettings();
+  const { fontSize, contentPadding, viewMode, setViewMode, editMode, toggleEditMode } = useSettings();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();
@@ -1284,12 +1284,13 @@ export function MarkdownView({ tab }: { tab: Tab }) {
               suppressContentEditableWarning
               onMouseOver={onArticleMouseOver}
               style={{
-                maxWidth: fullWidth ? "100%" : "820px",
+                // 内容宽度只由左右边距决定:边距 0 = 铺满,调大即收窄阅读栏,连续无跳变。
+                maxWidth: "100%",
                 margin: "0 auto",
-                padding: "32px 48px 64px",
+                padding: `32px ${contentPadding}px 64px`,
                 fontSize,
                 ["--md-font-size" as string]: `${fontSize}px`,
-                transition: "max-width 0.25s ease, font-size 0.2s ease",
+                transition: "font-size 0.2s ease, padding 0.15s ease",
               }}
               dangerouslySetInnerHTML={{ __html: html }}
             />

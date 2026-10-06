@@ -9,6 +9,7 @@ import {
   Image,
   Menu,
   Portal,
+  Slider,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -23,6 +24,7 @@ import {
   ChevronDown,
   Download,
   Heart,
+  ImagePlus,
   Info,
   Minus,
   Palette,
@@ -31,10 +33,11 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useSettings, type Language } from "../stores/settings";
+import { useSettings, MAX_BACKGROUND_BLUR, type Language } from "../stores/settings";
 import { useUpdate } from "../stores/update";
 import { IS_STORE_BUILD } from "../lib/build-flags";
-import { isMdAssociated, registerMdAssociation, unregisterMdAssociation } from "../tauri/api";
+import { isMdAssociated, openImageDialog, registerMdAssociation, unregisterMdAssociation } from "../tauri/api";
+import { useBackgroundSrc } from "../lib/useBackgroundSrc";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { QqGroupSection } from "./QqGroupSection";
 
@@ -153,7 +156,23 @@ function GeneralSection() {
 function AppearanceSection() {
   const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
-  const { fontSize, setFontSize } = useSettings();
+  const {
+    fontSize,
+    setFontSize,
+    backgroundImage,
+    backgroundBlur,
+    setBackgroundImage,
+    setBackgroundBlur,
+  } = useSettings();
+
+  // 选一张图片作为整窗背景;取消选择即清空。
+  const pickBackground = async () => {
+    const picked = await openImageDialog().catch(() => null);
+    if (picked) setBackgroundImage(picked);
+  };
+  const backgroundName = backgroundImage ? backgroundImage.split(/[\\/]/).pop() : null;
+  // 预览缩略图:走和背景层同一条资源协议放行逻辑。
+  const backgroundSrc = useBackgroundSrc(backgroundImage);
 
   return (
     <VStack align="stretch" gap={0}>
@@ -197,6 +216,85 @@ function AppearanceSection() {
           </IconButton>
         </HStack>
       </Flex>
+
+      <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
+        <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+          {t("settings.appearance.background")}
+        </Text>
+        <HStack gap={2} minW={0}>
+          {backgroundSrc && (
+            <Box
+              as="button"
+              type="button"
+              title={t("settings.appearance.backgroundChoose")}
+              onClick={() => void pickBackground()}
+              w="44px"
+              h="28px"
+              flexShrink={0}
+              borderRadius="6px"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              overflow="hidden"
+              cursor="pointer"
+            >
+              <img
+                src={backgroundSrc}
+                alt=""
+                draggable={false}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              />
+            </Box>
+          )}
+          <Text fontSize="xs" color="fg.faint" truncate maxW="160px" title={backgroundImage ?? undefined}>
+            {backgroundName ?? t("settings.appearance.backgroundNone")}
+          </Text>
+          <Button size="xs" variant="subtle" gap={1} onClick={() => void pickBackground()}>
+            <ImagePlus size={12} />
+            {t("settings.appearance.backgroundChoose")}
+          </Button>
+          {backgroundImage && (
+            <IconButton
+              aria-label={t("settings.appearance.backgroundRemove")}
+              title={t("settings.appearance.backgroundRemove")}
+              variant="ghost"
+              size="xs"
+              onClick={() => setBackgroundImage(null)}
+            >
+              <X size={13} />
+            </IconButton>
+          )}
+        </HStack>
+      </Flex>
+
+      {/* 模糊只在有背景图时才有意义,没图就不显示这一行。 */}
+      {backgroundImage && (
+        <Flex justify="space-between" align="center" gap={6} py={3} borderBottomWidth="1px" borderColor="border.subtle">
+          <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+            {t("settings.appearance.backgroundBlur")}
+          </Text>
+          <HStack gap={3}>
+            <Slider.Root
+              min={0}
+              max={MAX_BACKGROUND_BLUR}
+              step={1}
+              size="sm"
+              w="140px"
+              value={[backgroundBlur]}
+              onValueChange={(e) => setBackgroundBlur(e.value[0])}
+            >
+              <Slider.Control>
+                <Slider.Track>
+                  <Slider.Range />
+                </Slider.Track>
+                <Slider.Thumbs />
+              </Slider.Control>
+            </Slider.Root>
+            <Text w="30px" textAlign="right" fontSize="sm" fontVariantNumeric="tabular-nums">
+              {backgroundBlur}
+            </Text>
+          </HStack>
+        </Flex>
+      )}
     </VStack>
   );
 }
@@ -238,7 +336,7 @@ function AboutSection() {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
-  const [version, setVersion] = useState("1.0.2");
+  const [version, setVersion] = useState("1.0.3");
   const { lastCheck, tag: latestTag, check, phase, progress, errorMsg, startDownload, install } =
     useUpdate();
 
