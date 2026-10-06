@@ -100,6 +100,19 @@ pnpm tauri build
 # 产物：src-tauri/target/release/openmd.exe
 ```
 
+### Linux
+
+主程序基于 Tauri，本体跨平台。Linux 上通过系统的 WebKitGTK 渲染，需先安装 WebKitGTK 开发库（Debian/Ubuntu/Mint）：
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+pnpm install
+pnpm tauri build
+# 产物：src-tauri/target/release/openmd
+```
+
+Fedora/Arch 等其他发行版请参考 Tauri 官方文档安装对应的 `webkit2gtk-4.1` 开发包。
+
 ### macOS
 
 主程序基于 Tauri，本体跨平台，Mac 上可直接构建原生 `.app`：
