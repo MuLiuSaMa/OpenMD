@@ -41,6 +41,18 @@ async function getMermaid(dark: boolean): Promise<Mermaid> {
       securityLevel: "strict",
       // mermaid 默认会把错误图直接塞进 DOM,我们要自己画错误框
       suppressErrorRendering: true,
+      // Mermaid 12 的新布局会把流程图边线强制成直角折线；切回 dagre
+      // 才能使用平滑曲线,同时给节点和层级留出更舒适的间距。
+      layout: "dagre",
+      flowchart: {
+        curve: "basis",
+        nodeSpacing: 260,
+        rankSpacing: 160,
+        padding: 20,
+        diagramPadding: 18,
+        wrappingWidth: 300,
+        minNodeWidth: 220,
+      },
       theme,
       fontFamily: "'MiSans', 'PingFang SC', 'Microsoft YaHei', sans-serif",
     });
@@ -74,9 +86,8 @@ function claimBlocks(root: HTMLElement): HTMLElement[] {
 }
 
 /**
- * 扫描 root 下所有 mermaid 代码块并渲染成 SVG。只在阅读态调用(编辑态保留
- * 可编辑代码块)。异步安全:await 之后发现容器已被下一次重渲染替换(脱离
- * 文档)就直接放弃,不会有旧图闪现。
+ * 扫描 root 下所有 mermaid 代码块并渲染成 SVG。异步安全:await 之后发现
+ * 容器已被下一次重渲染替换(脱离文档)就直接放弃,不会有旧图闪现。
  */
 export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Promise<void> {
   const boxes = claimBlocks(root);
@@ -118,6 +129,16 @@ export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Pro
     } else if (svg !== undefined) {
       box.classList.remove("md-mermaid-error");
       box.innerHTML = svg;
+      // Mermaid 会在内联样式中写入图形自然宽度（例如 max-width: 408.5px）。
+      // 样式表的 max-width:100% 只负责窄容器收缩；保留这个自然宽度作为
+      // width，避免宽容器里把 SVG 反向放大到整栏大小。
+      const svgElement = box.querySelector<SVGSVGElement>("svg");
+      const naturalWidth = svgElement?.style.maxWidth;
+      if (svgElement && naturalWidth) {
+        svgElement.style.width = naturalWidth;
+        svgElement.style.maxWidth = "100%";
+        svgElement.style.height = "auto";
+      }
     }
   }
 }

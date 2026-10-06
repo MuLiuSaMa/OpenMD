@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Box, HStack, IconButton, Text } from "@chakra-ui/react";
-import { AppWindow, ChevronDown, FolderOpen, X } from "lucide-react";
+import { AppWindow, ChevronDown, X } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { HOME_TAB_ID, isDirty, tabName, useTabs } from "../stores/tabs";
 import { detectEditors, openFileWith, type EditorApp } from "../tauri/api";
@@ -162,7 +162,7 @@ export function TabBar() {
         type: "item",
         label: t("tabs.openWith.explorer"),
         icon: <ExplorerIcon size={16} />,
-        active: selection?.kind === "explorer",
+        active: selection === null || selection.kind === "explorer",
         keepOpen: true,
         onClick: pickExplorer,
       },
@@ -172,9 +172,10 @@ export function TabBar() {
 
   // 主按钮外观跟随当前选择:未选择 → 打开(回退为资源管理器定位);
   // 资源管理器 / 某个程序 → 显示对应图标与名称。
-  let mainIcon = <FolderOpen size={13} />;
-  let mainLabel = t("tabs.openWith.open");
-  let mainTitle = t("tabs.openWith.showInExplorer");
+  // 未保存选择时，实际默认动作就是资源管理器，主按钮也按该默认项显示。
+  let mainIcon = <ExplorerIcon size={14} />;
+  let mainLabel = t("tabs.openWith.explorerShort");
+  let mainTitle = t("tabs.openWith.showInExplorerShort");
   if (selection?.kind === "explorer") {
     mainIcon = <ExplorerIcon size={14} />;
     mainLabel = t("tabs.openWith.explorerShort");

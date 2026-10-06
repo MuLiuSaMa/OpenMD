@@ -18,6 +18,8 @@ import { HOME_TAB_ID, useTabs } from "./stores/tabs";
 import { useSettings } from "./stores/settings";
 import { useWorkspace } from "./stores/workspace";
 import { useUpdate } from "./stores/update";
+import { IS_STORE_BUILD } from "./lib/build-flags";
+import { openStandaloneFiles } from "./lib/openStandaloneFiles";
 import { viewInAnimation } from "./theme/theme";
 import {
   getOpenedFiles,
@@ -43,7 +45,6 @@ export default function App() {
   const { t } = useTranslation();
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
-  const openPath = useTabs((s) => s.openPath);
   const refreshPath = useTabs((s) => s.refreshPath);
   const { tocOpen } = useSettings();
   const [openError, setOpenError] = useState<string | null>(null);
@@ -56,8 +57,9 @@ export default function App() {
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
   // 启动自动检查更新(GitCode release,带令牌认证);发现新版本时右下角弹更新弹窗。
+  // 商店版(MSIX)更新由商店接管,不做任何应用内更新。
   useEffect(() => {
-    if (!inTauri) return;
+    if (!inTauri || IS_STORE_BUILD) return;
     const timer = window.setTimeout(() => {
       void useUpdate.getState().check();
     }, 1500);
@@ -85,6 +87,8 @@ export default function App() {
       }
     });
     const unlistenTrayCheck = listen("tray-check-update", () => {
+      // 商店版托盘菜单不含此项;双保险避免商店外更新入口。
+      if (IS_STORE_BUILD) return;
       void useUpdate.getState().check().then((result) => {
         if (result === "latest") showNotice(t("shell.upToDate"));
         else if (result === "error") showNotice(t("shell.updateCheckFailed"));
@@ -121,13 +125,11 @@ export default function App() {
           return [];
         });
         void logAssoc(`startup drained ${buffered.length} buffered: ${buffered.join(", ")}`);
-        for (const p of buffered) {
-          await openPath(p);
-        }
+        await openStandaloneFiles(buffered);
       }
       setStartupReady(true);
     })();
-  }, [openPath]);
+  }, []);
 
   // OS file watchers → refresh the tab that owns the file. Per-path 100ms
   // coalescing (editors fire several events per save) plus a suppression
@@ -152,9 +154,7 @@ export default function App() {
     });
     const unlistenOpened = onOpenedFiles((paths) => {
       void logAssoc(`frontend opened-files event: ${paths.join(", ")}`);
-      for (const p of paths) {
-        void openPath(p);
-      }
+      void openStandaloneFiles(paths);
     });
     // 工作区目录树的外部变更(store 内部有拖尾合并,重拉展开目录)
     const unlistenWorkspace = onWorkspaceChanged(({ path }) => {
@@ -165,7 +165,7 @@ export default function App() {
       unlistenOpened.then((fn) => fn());
       unlistenWorkspace.then((fn) => fn());
     };
-  }, [refreshPath, openPath]);
+  }, [refreshPath]);
 
   // 全局禁用 WebView2 默认右键菜单;内容区的自定义菜单在 MarkdownView 里,
   // 内容区之外右键静默无菜单。
@@ -182,9 +182,10 @@ export default function App() {
     const promise = getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type === "drop") {
+          const markdownPaths: string[] = [];
           for (const p of event.payload.paths) {
             if (isMarkdownPath(p)) {
-              void openPath(p);
+              markdownPaths.push(p);
               continue;
             }
             void isDirectory(p)
@@ -193,6 +194,7 @@ export default function App() {
               })
               .catch(() => {});
           }
+          if (markdownPaths.length > 0) void openStandaloneFiles(markdownPaths);
         }
       })
       .catch((e) => {
@@ -202,7 +204,7 @@ export default function App() {
     return () => {
       promise.then((fn) => fn());
     };
-  }, [openPath]);
+  }, []);
 
   // Window title follows the active tab.
   useEffect(() => {
@@ -233,7 +235,7 @@ export default function App() {
         } else {
           openFileDialog()
             .then((paths) => {
-              for (const p of paths ?? []) void useTabs.getState().openPath(p);
+              void openStandaloneFiles(paths ?? []);
             })
             .catch((err) => setOpenError(String(err)));
         }

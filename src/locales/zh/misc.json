@@ -1,6 +1,10 @@
 {
   "misc.openFile": "打开文件",
   "misc.openFolder": "打开文件夹",
+  "misc.workspaceHomeTitle": "工作区",
+  "misc.openAnotherFolder": "换一个文件夹",
+  "misc.closeWorkspace": "关闭工作区",
+  "misc.homeWorkspaceCount": "{{count}} 个文档",
   "misc.settings": "设置",
   "misc.recentFiles": "最近打开",
   "misc.clearRecent": "清空最近打开",
@@ -18,5 +22,8 @@
   "misc.updatePromptInstall": "下载完成,是否立即安装?",
   "misc.restartInstall": "重启安装",
   "misc.downloadFailedRetry": "下载失败,请稍后再试",
-  "misc.close": "关闭"
+  "misc.close": "关闭",
+  "misc.previousSlide": "上一页",
+  "misc.nextSlide": "下一页",
+  "misc.exitPresentation": "退出演示"
 }

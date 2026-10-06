@@ -7,6 +7,7 @@ import { useTabs } from "../stores/tabs";
 import { useRecent, type RecentFile } from "../stores/recent";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
+import { openStandaloneFiles } from "../lib/openStandaloneFiles";
 import { viewInAnimation } from "../theme/theme";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { SettingsModal } from "./SettingsModal";
@@ -55,19 +56,21 @@ export function EmptyState() {
   const handleClick = async () => {
     try {
       const paths = await openFileDialog();
-      for (const p of paths ?? []) {
-        await openPaths(p);
-      }
+      await openStandaloneFiles(paths ?? []);
     } catch {
       /* 用户取消或浏览器环境 */
     }
   };
 
-  // 打开文件夹为工作区:首页先记住(持久化),打开任意文档后侧栏文件 Tab 可见。
+  // 打开文件夹为工作区:打开后直接进预览页 —— 有文档就打开第一篇,用户不必再
+  // 点一次侧栏;完全没有文档时停在 Logo 首页(侧栏树会提示"此文件夹中没有文档")。
+  // 取消对话框则什么都不做。
   const handleOpenFolder = async () => {
     try {
       const picked = await openFolderDialog();
-      if (picked) await useWorkspace.getState().openFolder(picked);
+      if (!picked) return;
+      const { firstDoc } = await useWorkspace.getState().openFolder(picked);
+      if (firstDoc) await openPaths(firstDoc);
     } catch {
       /* 用户取消或浏览器环境 */
     }
@@ -169,6 +172,11 @@ export function EmptyState() {
     </Button>
   );
 
+  // 设置弹窗在两种首页布局下共用一份。
+  const settingsModal = (
+    <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+  );
+
   // 没有打开过的文档:保持居中留白布局。
   if (recents.length === 0) {
     return (
@@ -187,7 +195,7 @@ export function EmptyState() {
           {wordmark}
           {actionButtons}
         </VStack>
-        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        {settingsModal}
       </Box>
     );
   }
@@ -260,7 +268,7 @@ export function EmptyState() {
                     "&:hover .recent-time": { display: "none" },
                     "&:hover .recent-remove": { display: "inline-flex" },
                   }}
-                  onClick={() => void openPaths(f.path)}
+                  onClick={() => void openStandaloneFiles([f.path])}
                 >
                   <FileText size={18} color="var(--chakra-colors-fg-muted)" style={{ flexShrink: 0 }} />
                   <Box flex={1} minW={0}>
@@ -296,7 +304,7 @@ export function EmptyState() {
           </Box>
         </Box>
       </Flex>
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {settingsModal}
     </Box>
   );
 }

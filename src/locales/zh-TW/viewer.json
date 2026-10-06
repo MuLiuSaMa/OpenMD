@@ -11,6 +11,7 @@
   "viewer.toolbar.switchView": "切換預覽或程式碼檢視",
   "viewer.toolbar.preview": "預覽",
   "viewer.toolbar.code": "程式碼",
+  "viewer.toolbar.present": "簡報",
   "viewer.menu.copy": "複製",
   "viewer.menu.copyImage": "複製圖片",
   "viewer.menu.copyImageAddress": "複製圖片位址",

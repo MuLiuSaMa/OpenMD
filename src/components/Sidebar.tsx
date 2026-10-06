@@ -44,8 +44,8 @@ function TabButton({
 
 /**
  * 统一侧栏:250px 占位宽度过渡(原 TocSidebar 范式),顶部小 Tab 在
- * 「目录」(当前文档大纲)与「文件」(工作区目录树)之间切换。两个 Tab
- * 独立工作:没打开工作区时文件 Tab 显示引导按钮,目录 Tab 始终可用。
+ * 「文件夹」(工作区目录树)与「目录」(当前文档大纲)之间切换。两个 Tab
+ * 独立工作:没打开工作区时文件夹 Tab 显示引导按钮,目录 Tab 始终可用。
  */
 export function Sidebar({ open }: { open: boolean }) {
   const { t } = useTranslation();
@@ -58,8 +58,8 @@ export function Sidebar({ open }: { open: boolean }) {
   };
 
   const tabs: { key: SidebarTab; label: string; icon: ReactNode }[] = [
-    { key: "toc", label: t("shell.toc"), icon: <ListTree size={13} /> },
     { key: "files", label: t("shell.workspace"), icon: <FolderOpen size={13} /> },
+    { key: "toc", label: t("shell.toc"), icon: <ListTree size={13} /> },
   ];
 
   return (

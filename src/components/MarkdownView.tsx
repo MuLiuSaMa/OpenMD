@@ -10,6 +10,7 @@ import {
   ImagePlus,
   Link2,
   Pencil,
+  Play,
   Redo2,
   Replace,
   Save,
@@ -28,7 +29,7 @@ import {
   resolveLocalPath,
 } from "../renderer/pipeline";
 import { articleToMarkdown } from "../renderer/backconvert";
-import { renderMermaidBlocks } from "../renderer/mermaid";
+import { renderRichBlocks } from "../renderer/richBlocks";
 import { applyLinePatches, collectPatches, patchFromBlock, shiftForLine } from "../renderer/previewEdit";
 import {
   copyImage,
@@ -39,12 +40,20 @@ import {
 } from "../renderer/clipboard";
 import hljs from "../renderer/hljs";
 import { extractToc, isObserverPaused, useToc } from "../stores/toc";
-import { allowAssets, importImage, openImageDialog, pathExists } from "../tauri/api";
+import {
+  allowAssets,
+  importImage,
+  openImageDialog,
+  pathExists,
+  resolveWikiTarget,
+} from "../tauri/api";
 import { useTabs, type Tab } from "../stores/tabs";
 import { useSettings, type ViewMode } from "../stores/settings";
+import { useWorkspace } from "../stores/workspace";
 import { withViewTransition } from "../utils/viewTransition";
 import { ContextMenu, type MenuEntry } from "./ContextMenu";
 import { EmptyState } from "./EmptyState";
+import { PresentationMode } from "./PresentationMode";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 
 const MD_EXTENSIONS = /\.(md|markdown|mdown|mkd)$/i;
@@ -262,6 +271,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
   const editing = editMode && tab.path !== null;
   const dirty = tab.draft !== null && tab.draft !== tab.content;
+  const [presenting, setPresenting] = useState(false);
 
   const baseDir = tab.path ? dirnameOf(tab.path) : undefined;
   // 预览的渲染源。编辑期间预览打字只更新 store 里的 draft,不跟进
@@ -292,14 +302,18 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在边界时刻同步
   }, [tab.content, tab.id, viewMode, editMode]);
-  const { html, assetPaths } = useMemo(() => {
-    if (tab.error) return { html: "", assetPaths: [] as string[] };
-    if (!tab.path) return { html: "", assetPaths: [] as string[] };
+  const { html, assetPaths, frontmatter, isMarp } = useMemo(() => {
+    if (tab.error) {
+      return { html: "", assetPaths: [] as string[], frontmatter: null, isMarp: false };
+    }
+    if (!tab.path) {
+      return { html: "", assetPaths: [] as string[], frontmatter: null, isMarp: false };
+    }
     try {
       return renderFull(previewSource, baseDir);
     } catch (e) {
       console.error("render failed:", e);
-      return { html: "", assetPaths: [] as string[] };
+      return { html: "", assetPaths: [] as string[], frontmatter: null, isMarp: false };
     }
   }, [previewSource, tab.error, tab.path, baseDir]);
 
@@ -367,14 +381,14 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     const article = articleRef.current;
     if (!article || !tab.path) return;
 
-    // Mermaid 图表:阅读态把 ```mermaid 代码块替换成渲染好的 SVG;编辑态
-    // 保留可编辑代码块(改完切回阅读即见新图)。主题切换后 effect 重跑,
-    // 已渲染容器按存下的源码重建。异步进行,容器被重渲染替换后自动放弃。
-    if (!editing) {
-      void renderMermaidBlocks(article, isDark).catch((e) =>
-        console.error("mermaid render failed:", e),
-      );
-    }
+    // 富块:Mermaid、Graphviz、Vega/Vega-Lite、Chart.js。预览与编辑模式
+    // 同样生效;源码在代码视图中编辑。异步进行,容器被重渲染替换后自动放弃。
+    void renderRichBlocks(article, isDark, {
+      root: useWorkspace.getState().root ?? undefined,
+      fromPath: tab.path,
+    }).catch((e) =>
+      console.error("rich block render failed:", e),
+    );
 
     // 兜底自愈:若有图片请求仍抢在白名单写入之前到达(未被上层路径覆盖的
     // 时序),它会被拒且 <img> 不重试。白名单就绪后,对仍处于失败状态
@@ -413,7 +427,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     // Code copy buttons.
     article.querySelectorAll("pre").forEach((pre) => {
       // mermaid 错误框里的 pre 是提示信息,不是可复制的源码
-      if (pre.closest(".md-mermaid")) return;
+      if (pre.closest(".md-mermaid, .md-rich")) return;
       if (pre.querySelector(".code-copy-btn")) return;
       const btn = document.createElement("button");
       btn.className = "code-copy-btn";
@@ -431,8 +445,26 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
     // Link handling: external URLs → system browser; local paths → in-app
     // (markdown) or system (everything else).
+    // Wiki 链接:按工作区解析目标后直接打开。
+    article.querySelectorAll("a.wiki-link").forEach((el) => {
+      const link = el as HTMLAnchorElement;
+      link.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (editMode) return;
+        const target = link.getAttribute("data-wiki-target");
+        const workspaceRoot = useWorkspace.getState().root;
+        if (!target || !workspaceRoot || !tab.path) return;
+        try {
+          const resolved = await resolveWikiTarget(workspaceRoot, tab.path, target);
+          if (resolved.path) void useTabs.getState().openPath(resolved.path);
+        } catch (err) {
+          console.warn("wiki link resolve failed:", target, err);
+        }
+      });
+    });
     article.querySelectorAll("a[href]").forEach((el) => {
       const link = el as HTMLAnchorElement;
+      if (link.classList.contains("wiki-link")) return;
       const href = link.getAttribute("href") ?? "";
       if (!href || href.startsWith("#")) return;
       link.addEventListener("click", async (e) => {
@@ -638,10 +670,19 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     const article = articleRef.current;
     if (!article || !tab.path) return;
     const observer = new MutationObserver((muts) => {
+      // Mermaid 后处理会异步替换代码块内容;这不是用户编辑,不能写回草稿。
+      const relevant = muts.filter((m) => {
+        if (m.target instanceof Element && m.target.closest(".md-mermaid")) return false;
+        for (const node of [...Array.from(m.addedNodes), ...Array.from(m.removedNodes)]) {
+          if (node instanceof Element && node.closest(".md-mermaid")) return false;
+        }
+        return true;
+      });
+      if (relevant.length === 0) return;
       // 原生编辑(打字/insertHTML/字号命令)发生后,图片属性操作的自建撤销栈作废。
       imgUndoRef.current = [];
       imgRedoRef.current = [];
-      previewMutationsRef.current.push(...muts);
+      previewMutationsRef.current.push(...relevant);
       schedulePreviewPatch();
     });
     observer.observe(article, { childList: true, subtree: true, characterData: true });
@@ -1221,24 +1262,47 @@ export function MarkdownView({ tab }: { tab: Tab }) {
             </div>
           </div>
         ) : (
-          <article
-            ref={articleRef}
-            className="md-body"
-            contentEditable={editing || undefined}
-            suppressContentEditableWarning
-            onMouseOver={onArticleMouseOver}
-            style={{
-              maxWidth: fullWidth ? "100%" : "820px",
-              margin: "0 auto",
-              padding: "32px 48px 64px",
-              fontSize,
-              ["--md-font-size" as string]: `${fontSize}px`,
-              transition: "max-width 0.25s ease, font-size 0.2s ease",
-            }}
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <>
+            {frontmatter && Object.keys(frontmatter).length > 0 && (
+              <div className="md-frontmatter">
+                {Object.entries(frontmatter)
+                  .slice(0, 8)
+                  .map(([key, value]) => (
+                    <span key={key} className="md-frontmatter-field">
+                      <span className="md-frontmatter-key">{key}</span>
+                      <span className="md-frontmatter-value">
+                        {Array.isArray(value) ? value.join(", ") : String(value)}
+                      </span>
+                    </span>
+                  ))}
+              </div>
+            )}
+            <article
+              ref={articleRef}
+              className="md-body"
+              contentEditable={editing || undefined}
+              suppressContentEditableWarning
+              onMouseOver={onArticleMouseOver}
+              style={{
+                maxWidth: fullWidth ? "100%" : "820px",
+                margin: "0 auto",
+                padding: "32px 48px 64px",
+                fontSize,
+                ["--md-font-size" as string]: `${fontSize}px`,
+                transition: "max-width 0.25s ease, font-size 0.2s ease",
+              }}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          </>
         )}
       </Box>
+      {presenting && tab.path && (
+        <PresentationMode
+          content={previewSource}
+          path={tab.path}
+          onExit={() => setPresenting(false)}
+        />
+      )}
       <FloatingScrollbar targetRef={scrollRef} />
       {/* 图片拖拽手柄:视口定位在图片右下角,拖动实时调宽。 */}
       {resizeHandle && editing && viewMode === "preview" && (
@@ -1355,6 +1419,21 @@ export function MarkdownView({ tab }: { tab: Tab }) {
             </SegmentGroup.ItemText>
           </SegmentGroup.Item>
         </SegmentGroup.Root>
+        {isMarp && viewMode === "preview" && (
+          <Button
+            aria-label={t("viewer.toolbar.present")}
+            title={t("viewer.toolbar.present")}
+            size="xs"
+            variant="ghost"
+            gap={1}
+            px={2}
+            ms={1}
+            onClick={() => setPresenting(true)}
+          >
+            <Play size={13} />
+            {t("viewer.toolbar.present")}
+          </Button>
+        )}
       </Box>
     </Box>
   );

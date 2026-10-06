@@ -1,6 +1,6 @@
 {
   "tabs.openWith.open": "打开",
-  "tabs.openWith.explorer": "文件资源管理器",
+  "tabs.openWith.explorer": "资源管理器",
   "tabs.openWith.explorerShort": "资源管理器",
   "tabs.openWith.noEditors": "未检测到其他程序",
   "tabs.openWith.showInExplorer": "在资源管理器中显示(下拉可选择其他程序)",

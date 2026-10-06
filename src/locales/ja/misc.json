@@ -1,6 +1,10 @@
 {
   "misc.openFile": "ファイルを開く",
   "misc.openFolder": "フォルダを開く",
+  "misc.workspaceHomeTitle": "ワークスペース",
+  "misc.openAnotherFolder": "別のフォルダを開く",
+  "misc.closeWorkspace": "ワークスペースを閉じる",
+  "misc.homeWorkspaceCount": "{{count}} 件",
   "misc.settings": "設定",
   "misc.recentFiles": "最近使ったファイル",
   "misc.clearRecent": "最近のファイルを消去",
@@ -18,5 +22,8 @@
   "misc.updatePromptInstall": "ダウンロードが完了しました。今すぐインストールしますか?",
   "misc.restartInstall": "再起動してインストール",
   "misc.downloadFailedRetry": "ダウンロードに失敗しました。後でもう一度お試しください",
-  "misc.close": "閉じる"
+  "misc.close": "閉じる",
+  "misc.previousSlide": "前のスライド",
+  "misc.nextSlide": "次のスライド",
+  "misc.exitPresentation": "プレゼンを終了"
 }

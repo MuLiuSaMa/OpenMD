@@ -133,6 +133,20 @@ npm install --legacy-peer-deps
 .\build-installer.ps1   # 产出 OpenMD_{version}_Windows_x86_64.exe
 ```
 
+### 微软商店（MSIX，Windows）
+
+上架微软商店走 MSIX 打包，商店版会按微软政策隐藏商店外入口（平台标签、QQ 群、
+赞助、应用内更新等）：
+
+```powershell
+pnpm tauri:build:store   # 商店版构建
+pnpm msix                # 打出 msix/out/OpenMD_{version}_x64.msix
+pnpm msix:install        # 本地侧载测试
+```
+
+详见 [docs/BUILD-MSIX.md](docs/BUILD-MSIX.md)（含 Partner Center 包身份配置、
+提交流程与常见问题）。
+
 ## 项目结构
 
 ```

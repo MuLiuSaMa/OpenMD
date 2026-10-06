@@ -1,9 +1,27 @@
 import MarkdownIt from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import anchor from "markdown-it-anchor";
+import footnote from "markdown-it-footnote";
+import deflist from "markdown-it-deflist";
+import mark from "markdown-it-mark";
+import sub from "markdown-it-sub";
+import sup from "markdown-it-sup";
+import ins from "markdown-it-ins";
+import abbr from "markdown-it-abbr";
+import container from "markdown-it-container";
+import githubAlerts from "markdown-it-github-alerts";
+import texmath from "markdown-it-texmath";
+import multimdTable from "markdown-it-multimd-table";
+import implicitFigures from "markdown-it-implicit-figures";
+import attrs from "markdown-it-attrs";
+import linkAttributes from "markdown-it-link-attributes";
+import { full as emoji } from "markdown-it-emoji";
+import katex from "katex";
+import { parse as parseYaml } from "yaml";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import hljs from "./hljs";
 import { sanitizeHtml } from "./sanitize";
+import { wikiPlugin } from "./wiki";
 
 export interface RenderResult {
   html: string;
@@ -16,6 +34,15 @@ export interface RenderResult {
    * by the webview's asset protocol.
    */
   assetPaths: string[];
+  /** True when frontmatter declares `marp: true`. */
+  isMarp: boolean;
+  /** Non-fatal renderer diagnostics. */
+  warnings: string[];
+}
+
+export function isMarpDoc(frontmatter: Record<string, unknown> | null): boolean {
+  const value = frontmatter?.marp;
+  return value === true || value === "true";
 }
 
 /** Matches a leading `---\n…\n---\n` frontmatter block. */
@@ -191,6 +218,52 @@ function makeMarkdownIt(): MarkdownIt {
   });
 
   instance.use(taskLists, { enabled: false, label: true });
+  instance.use(footnote);
+  instance.use(deflist);
+  instance.use(mark);
+  instance.use(sub);
+  instance.use(sup);
+  instance.use(ins);
+  instance.use(abbr);
+  instance.use(texmath, {
+    engine: katex,
+    delimiters: ["dollars", "brackets", "beg_end"],
+    katexOptions: { throwOnError: false, strict: "ignore" },
+  });
+  instance.use(emoji);
+  instance.use(githubAlerts, { markers: "*" });
+  instance.use(container, "admonition");
+  instance.use(multimdTable, {
+    multiline: true,
+    rowspan: true,
+    headerless: true,
+    multibody: true,
+    autolabel: true,
+  });
+  instance.use(implicitFigures, { figcaption: true, link: false });
+  instance.use(attrs as any, {
+    allowedAttributes: [
+      "id",
+      "class",
+      "style",
+      "width",
+      "height",
+      "align",
+      "title",
+      "target",
+      "rel",
+    ],
+  });
+  instance.use(linkAttributes, {
+    matcher(href: string) {
+      return /^(?:https?:)?\/\//i.test(href);
+    },
+    attrs: {
+      target: "_blank",
+      rel: "noopener noreferrer",
+    },
+  });
+  instance.use(wikiPlugin);
   instance.use(anchor, {
     permalink: false,
     // Unicode-aware: keep CJK and other letters so 中文标题 get usable ids
@@ -208,30 +281,12 @@ function makeMarkdownIt(): MarkdownIt {
   return instance;
 }
 
-/** Simple `key: value` frontmatter parser (strings and string arrays only). */
 function parseFrontmatter(block: string): Record<string, unknown> {
-  const data: Record<string, unknown> = {};
-  block.split("\n").forEach((line) => {
-    const colonIdx = line.indexOf(":");
-    if (colonIdx > 0) {
-      const key = line.slice(0, colonIdx).trim();
-      let val: unknown = line.slice(colonIdx + 1).trim();
-      if (typeof val === "string" && val.startsWith("[") && val.endsWith("]")) {
-        val = val
-          .slice(1, -1)
-          .split(",")
-          .map((s) => s.trim());
-      }
-      if (
-        typeof val === "string" &&
-        ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))
-      ) {
-        val = val.slice(1, -1);
-      }
-      if (key) data[key] = val;
-    }
-  });
-  return data;
+  const parsed = parseYaml(block);
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {};
+  }
+  return parsed as Record<string, unknown>;
 }
 
 export function renderFull(markdown: string, baseDir?: string): RenderResult {
@@ -266,7 +321,14 @@ export function renderFull(markdown: string, baseDir?: string): RenderResult {
     html = resolveRelativeImages(html, baseDir, assetPaths);
   }
 
-  return { html, frontmatter, wordCount, assetPaths };
+  return {
+    html,
+    frontmatter,
+    wordCount,
+    assetPaths,
+    isMarp: isMarpDoc(frontmatter),
+    warnings: [],
+  };
 }
 
 export function render(markdown: string, baseDir?: string): string {
@@ -276,7 +338,7 @@ export function render(markdown: string, baseDir?: string): string {
 function resolveRelativeImages(html: string, baseDir: string, collected: string[]): string {
   return html
     .replace(
-      /(<img\s[^>]*?\bsrc=")(?!https?:\/\/|data:|blob:|asset:|file:)([^"]+)(")/gi,
+      /(<(?:img|video|audio|source|track)\s[^>]*?\bsrc=")(?!https?:\/\/|data:|blob:|asset:|file:)([^"]+)(")/gi,
       (_match, before, src, after) => {
         try {
           const imagePath = resolveLocalPath(src, baseDir);
@@ -286,6 +348,18 @@ function resolveRelativeImages(html: string, baseDir: string, collected: string[
           // asset-protocol URL. `src` is re-emitted verbatim: it is already a
           // well-formed attribute value (markdown-it escaped it).
           return `${before}${convertFileSrc(imagePath)}" data-original-src="${src}${after}`;
+        } catch {
+          return `${before}${src}${after}`;
+        }
+      },
+    )
+    .replace(
+      /(<video\s[^>]*?\bposter=")(?!https?:\/\/|data:|blob:|asset:|file:)([^"]+)(")/gi,
+      (_match, before, src, after) => {
+        try {
+          const imagePath = resolveLocalPath(src, baseDir);
+          collected.push(imagePath);
+          return `${before}${convertFileSrc(imagePath)}" data-original-poster="${src}${after}`;
         } catch {
           return `${before}${src}${after}`;
         }

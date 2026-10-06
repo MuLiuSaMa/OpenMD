@@ -11,6 +11,7 @@
   "viewer.toolbar.switchView": "Switch between preview and code view",
   "viewer.toolbar.preview": "Preview",
   "viewer.toolbar.code": "Code",
+  "viewer.toolbar.present": "Present",
   "viewer.menu.copy": "Copy",
   "viewer.menu.copyImage": "Copy image",
   "viewer.menu.copyImageAddress": "Copy image address",

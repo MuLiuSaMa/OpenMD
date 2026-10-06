@@ -1,6 +1,10 @@
 {
   "misc.openFile": "開啟檔案",
   "misc.openFolder": "開啟資料夾",
+  "misc.workspaceHomeTitle": "工作區",
+  "misc.openAnotherFolder": "開啟其他資料夾",
+  "misc.closeWorkspace": "關閉工作區",
+  "misc.homeWorkspaceCount": "{{count}} 個文件",
   "misc.settings": "設定",
   "misc.recentFiles": "最近開啟",
   "misc.clearRecent": "清空最近開啟",
@@ -18,5 +22,8 @@
   "misc.updatePromptInstall": "下載完成,是否立即安裝?",
   "misc.restartInstall": "重新啟動以安裝",
   "misc.downloadFailedRetry": "下載失敗,請稍後再試",
-  "misc.close": "關閉"
+  "misc.close": "關閉",
+  "misc.previousSlide": "上一頁",
+  "misc.nextSlide": "下一頁",
+  "misc.exitPresentation": "結束簡報"
 }

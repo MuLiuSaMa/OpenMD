@@ -64,6 +64,74 @@ function makeService(): TurndownService {
       return `![${alt}](${src}${titlePart})`;
     },
   });
+  // Math: KaTeX keeps the original TeX in a MathML annotation node.
+  instance.addRule("katex", {
+    filter: (node) =>
+      node.nodeName === "SPAN" &&
+      (node as HTMLElement).classList.contains("katex"),
+    replacement: (_content, node) => {
+      const annotation = node.querySelector?.('annotation[encoding="application/x-tex"]');
+      const tex = annotation?.textContent?.trim() ?? node.textContent?.trim() ?? "";
+      return (node as HTMLElement).classList.contains("katex-display")
+        ? `\n\n$$\n${tex}\n$$\n\n`
+        : `$${tex}$`;
+    },
+  });
+  // GitHub/Obsidian alerts and callouts.
+  instance.addRule("alert", {
+    filter: (node) =>
+      node.nodeName === "DIV" &&
+      (node as HTMLElement).classList.contains("markdown-alert"),
+    replacement: (_content, node) => {
+      const el = node as HTMLElement;
+      const marker =
+        el.className.match(/markdown-alert-([\w-]+)/)?.[1]?.toUpperCase() ?? "NOTE";
+      const title = el.querySelector(".markdown-alert-title")?.textContent?.trim();
+      const body = Array.from(el.children)
+        .filter((child) => !child.classList.contains("markdown-alert-title"))
+        .map((child) => markdownFromHtml(child.outerHTML).trim())
+        .filter(Boolean)
+        .join("\n");
+      return `\n\n> [!${marker}]${title && title.toUpperCase() !== marker ? ` ${title}` : ""}\n${body
+        .split("\n")
+        .map((line) => `> ${line}`)
+        .join("\n")}\n\n`;
+    },
+  });
+  instance.addRule("mark", {
+    filter: "mark",
+    replacement: (content) => `==${content}==`,
+  });
+  instance.addRule("sub", {
+    filter: "sub",
+    replacement: (content) => `~${content}~`,
+  });
+  instance.addRule("sup", {
+    filter: "sup",
+    replacement: (content) => `^${content}^`,
+  });
+  instance.addRule("ins", {
+    filter: "ins",
+    replacement: (content) => `++${content}++`,
+  });
+  instance.addRule("abbr", {
+    filter: "abbr",
+    replacement: (content, node) => {
+      const title = (node as HTMLElement).getAttribute("title") ?? "";
+      return title ? `*[${content}]: ${title}` : content;
+    },
+  });
+  instance.addRule("deflist", {
+    filter: (node) => node.nodeName === "DL",
+    replacement: (_content, node) => {
+      const parts: string[] = [];
+      for (const child of Array.from((node as HTMLElement).children)) {
+        const text = markdownFromHtml(child.innerHTML).trim();
+        parts.push(child.nodeName === "DT" ? text : `: ${text}`);
+      }
+      return `\n\n${parts.join("\n")}\n\n`;
+    },
+  });
   return instance;
 }
 
@@ -110,6 +178,16 @@ function rawHtmlToMarkdown(el: HTMLElement): string {
  * markup survives the round trip; everything else goes through turndown.
  */
 export function blockElementToMarkdown(el: HTMLElement): string {
+  if (el.classList.contains("md-rich")) {
+    const kind = el.getAttribute("data-rich-kind") ?? "text";
+    const source = (el.getAttribute("data-rich-src") ?? "").replace(/\r?\n$/, "");
+    return `\`\`\`${kind}\n${source}\n\`\`\``;
+  }
+  // 预览编辑把 Mermaid 代码块渲染成 SVG 后,回写时恢复原始围栏代码块。
+  if (el.classList.contains("md-mermaid")) {
+    const source = (el.getAttribute("data-mermaid-src") ?? "").replace(/\r?\n$/, "");
+    return `\`\`\`mermaid\n${source}\n\`\`\``;
+  }
   if (el.dataset.rawHtml !== undefined) return rawHtmlToMarkdown(el);
   // 带对齐属性的段落/标题:markdown 表达不了对齐,整块转原始 HTML
   // (同 GitHub 的 `<p align="center">` 用法)。

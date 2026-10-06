@@ -18,10 +18,15 @@ pub fn show_main_window(app: &AppHandle) {
 }
 
 /// 按当前语言构建托盘右键菜单。
+/// 商店版(MSIX 包身份运行)更新由商店接管,不提供「检查更新」,
+/// 避免出现商店外更新入口。
 pub fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let show = MenuItem::with_id(app, "show", t!("tray.show"), true, None::<&str>)?;
-    let check_update = MenuItem::with_id(app, "check-update", t!("tray.check_update"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", t!("tray.quit"), true, None::<&str>)?;
+    if crate::pkg::is_msix() {
+        return Menu::with_items(app, &[&show, &quit]);
+    }
+    let check_update = MenuItem::with_id(app, "check-update", t!("tray.check_update"), true, None::<&str>)?;
     Menu::with_items(app, &[&show, &check_update, &quit])
 }
 

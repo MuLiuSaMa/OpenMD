@@ -1,6 +1,10 @@
 {
   "misc.openFile": "Open File",
   "misc.openFolder": "Open Folder",
+  "misc.workspaceHomeTitle": "Workspace",
+  "misc.openAnotherFolder": "Open Another Folder",
+  "misc.closeWorkspace": "Close Workspace",
+  "misc.homeWorkspaceCount": "{{count}} docs",
   "misc.settings": "Settings",
   "misc.recentFiles": "Recent Files",
   "misc.clearRecent": "Clear recent files",
@@ -18,5 +22,8 @@
   "misc.updatePromptInstall": "Download complete. Install now?",
   "misc.restartInstall": "Restart to Install",
   "misc.downloadFailedRetry": "Download failed, please try again later",
-  "misc.close": "Close"
+  "misc.close": "Close",
+  "misc.previousSlide": "Previous slide",
+  "misc.nextSlide": "Next slide",
+  "misc.exitPresentation": "Exit presentation"
 }

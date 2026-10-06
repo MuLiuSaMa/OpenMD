@@ -31,6 +31,40 @@
 }
 
 /* ---------- 标题 ---------- */
+.md-frontmatter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 12px 48px;
+  border-bottom: 1px solid #e4e7eb;
+  font-size: 12px;
+}
+.md-frontmatter-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.md-frontmatter-key {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #8c959f;
+}
+.md-frontmatter-value {
+  color: #57606a;
+}
+.dark .md-frontmatter,
+[data-theme="dark"] .md-frontmatter {
+  border-bottom-color: #2d333b;
+}
+.dark .md-frontmatter-value,
+[data-theme="dark"] .md-frontmatter-value {
+  color: #8b949e;
+}
+
 .md-body h1,
 .md-body h2,
 .md-body h3,
@@ -146,10 +180,9 @@
 .md-body .md-mermaid {
   position: relative;
   margin: 1.1em 0;
-  padding: 1em;
-  border-radius: 10px;
-  border: 1px solid #e4e7eb;
-  background: #ffffff;
+  padding: 0;
+  border: 0;
+  background: transparent;
   text-align: center;
   overflow-x: auto;
 }
@@ -179,6 +212,176 @@
   white-space: pre-wrap;
   word-break: break-word;
   color: #1f2328;
+}
+
+/* ---------- 富块:Graphviz / Vega / Chart.js ---------- */
+.md-body .md-rich {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 1.2em 0;
+  overflow-x: auto;
+  text-align: center;
+}
+.md-body .md-rich svg,
+.md-body .md-rich canvas {
+  max-width: 100%;
+  height: auto;
+}
+.md-body .md-rich-chart {
+  height: 360px;
+}
+.md-body .md-rich-vega .vega-embed,
+.md-body .md-rich-vega-lite .vega-embed {
+  display: block !important;
+  width: 100% !important;
+  background: transparent;
+}
+.md-body .md-rich-vega svg,
+.md-body .md-rich-vega-lite svg {
+  max-width: 100%;
+  height: auto;
+  background: transparent;
+}
+.md-body .md-rich-vega .vega-actions,
+.md-body .md-rich-vega-lite .vega-actions {
+  display: none;
+}
+.md-body .md-rich-error {
+  text-align: start;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.md-body .md-rich-error-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #57606a;
+  margin-bottom: 0.4em;
+}
+.md-body .md-rich-error pre {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.8em;
+  white-space: pre-wrap;
+}
+
+/* ---------- KaTeX ---------- */
+.md-body .katex-display {
+  overflow-x: auto;
+  padding: 0.4em 0;
+}
+
+/* ---------- 脚注 ---------- */
+.md-body .footnotes {
+  margin-top: 2em;
+  border-top: 1px solid #e4e7eb;
+  font-size: 0.9em;
+  color: #57606a;
+}
+.md-body .footnote-ref a {
+  text-decoration: none;
+}
+.md-body .footnote-backref {
+  text-decoration: none;
+}
+
+/* ---------- GitHub Alerts / Obsidian Callouts ---------- */
+.md-body .markdown-alert {
+  --alert-color: #0969da;
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  border-left: 4px solid var(--alert-color);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--alert-color) 8%, transparent);
+}
+.md-body .markdown-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 650;
+  color: var(--alert-color);
+  margin-bottom: 0.2em;
+}
+.md-body .markdown-alert-note { --alert-color: #0969da; }
+.md-body .markdown-alert-tip { --alert-color: #1a7f37; }
+.md-body .markdown-alert-important { --alert-color: #8250df; }
+.md-body .markdown-alert-warning { --alert-color: #9a6700; }
+.md-body .markdown-alert-caution { --alert-color: #cf222e; }
+.md-body .markdown-alert-info { --alert-color: #0969da; }
+.md-body .markdown-alert-success { --alert-color: #1a7f37; }
+.md-body .markdown-alert-question { --alert-color: #8250df; }
+.md-body .markdown-alert-failure { --alert-color: #cf222e; }
+.md-body .markdown-alert-danger { --alert-color: #cf222e; }
+.md-body .markdown-alert-bug { --alert-color: #bc4c00; }
+.md-body .markdown-alert-example { --alert-color: #6e7781; }
+.md-body .markdown-alert-quote { --alert-color: #57606a; }
+
+/* ---------- 定义列表 / 缩写 / 高亮 / 上下标 ---------- */
+.md-body dl { margin: 1em 0; }
+.md-body dt { font-weight: 650; }
+.md-body dd {
+  margin: 0.2em 0 0.6em 1.5em;
+  color: #57606a;
+}
+.md-body abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+/* ---------- MultiMarkdown 表格与图注 ---------- */
+.md-body caption {
+  caption-side: bottom;
+  padding-top: 0.5em;
+  font-size: 0.85em;
+  color: #57606a;
+}
+.md-body figure {
+  margin: 1.2em 0;
+  text-align: center;
+}
+.md-body figcaption {
+  margin-top: 0.5em;
+  font-size: 0.85em;
+  color: #57606a;
+}
+
+/* ---------- 本地媒体 ---------- */
+.md-body video,
+.md-body audio {
+  display: block;
+  max-width: 100%;
+  margin: 1em auto;
+}
+
+/* ---------- Wiki 链接 / Obsidian 嵌入 ---------- */
+.md-body .wiki-link {
+  text-decoration-style: dashed;
+  text-underline-offset: 2px;
+}
+.md-body .wiki-embed {
+  display: block;
+  margin: 1em 0;
+}
+.md-body .wiki-embed > :first-child { margin-top: 0; }
+.md-body .wiki-embed > :last-child { margin-bottom: 0; }
+.md-body .wiki-embed-doc {
+  border-left: 3px solid #d0d7de;
+  padding-left: 1em;
+}
+.md-body .wiki-embed-missing,
+.md-body .wiki-embed-cycle {
+  color: #cf222e;
+  border: 1px dashed currentColor;
+  border-radius: 6px;
+  padding: 0.4em 0.7em;
+}
+.dark .md-body .wiki-embed-doc,
+[data-theme="dark"] .md-body .wiki-embed-doc {
+  border-left-color: #3d444d;
 }
 
 /* 复制按钮 */
@@ -393,8 +596,8 @@
 
 .dark .md-body .md-mermaid,
 [data-theme="dark"] .md-body .md-mermaid {
-  border-color: #2d333b;
-  background: #161b22;
+  border-color: transparent;
+  background: transparent;
 }
 .dark .md-body .md-mermaid-error-label,
 [data-theme="dark"] .md-body .md-mermaid-error-label {
@@ -403,6 +606,30 @@
 .dark .md-body .md-mermaid-error pre,
 [data-theme="dark"] .md-body .md-mermaid-error pre {
   color: #c9d1d9;
+}
+.dark .md-body .md-rich-error,
+[data-theme="dark"] .md-body .md-rich-error {
+  border-color: #3d444d;
+}
+.dark .md-body .md-rich-error-label,
+.dark .md-body .footnotes,
+.dark .md-body dd,
+.dark .md-body figcaption,
+.dark .md-body caption,
+[data-theme="dark"] .md-body .md-rich-error-label,
+[data-theme="dark"] .md-body .footnotes,
+[data-theme="dark"] .md-body dd,
+[data-theme="dark"] .md-body figcaption,
+[data-theme="dark"] .md-body caption {
+  color: #8b949e;
+}
+.dark .md-body .footnotes,
+[data-theme="dark"] .md-body .footnotes {
+  border-top-color: #2d333b;
+}
+.dark .md-body .markdown-alert,
+[data-theme="dark"] .md-body .markdown-alert {
+  background: color-mix(in srgb, var(--alert-color) 16%, transparent);
 }
 
 .dark .md-body .code-copy-btn,

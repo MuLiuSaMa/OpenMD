@@ -6,6 +6,9 @@ import { system } from "./theme/theme";
 import App from "./App";
 import "./i18n";
 import LanguageSync from "./components/LanguageSync";
+import "katex/dist/katex.min.css";
+import "markdown-it-github-alerts/styles/github-base.css";
+import "markdown-it-github-alerts/styles/github-colors-dark-class.css";
 import "./theme/md.css";
 
 // Chakra v3 delegates color mode to next-themes: `attribute="class"` puts the

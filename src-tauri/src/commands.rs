@@ -260,6 +260,285 @@ pub fn list_workspace_dir(path: String) -> Result<Vec<WorkspaceEntry>, String> {
     Ok(dirs)
 }
 
+/// Recursion bound for [`scan_markdown_files`]. A workspace is a folder of
+/// notes, not a disk image: past this the walk stops descending instead of
+/// turning one click into an unbounded filesystem traversal.
+const WORKSPACE_SCAN_MAX_DEPTH: usize = 12;
+
+/// Hard ceiling on collected paths, so a pathological tree (say a checkout of
+/// generated docs) cannot blow up the IPC payload either.
+const WORKSPACE_SCAN_MAX_FILES: usize = 5000;
+
+/// How many paths [`list_workspace_files`] returns alongside the count. The
+/// home screen only needs the total; the sample keeps the door open for a flat
+/// listing later without shipping every path of a huge workspace.
+const WORKSPACE_SCAN_FILES_PREVIEW: usize = 50;
+
+/// Recursive listing of the text documents under `root`, shared by
+/// [`list_workspace_files`] and its tests.
+///
+/// Directories are walked depth-first in the same natural order the sidebar
+/// tree uses, hidden and `node_modules` directories are skipped exactly like
+/// [`list_workspace_dir`], and only [`ALLOWED_TEXT_EXTENSIONS`] files are
+/// collected. `remaining` is the file-count budget: the walk stops as soon as
+/// it is exhausted, so both depth and total work are bounded. Unreadable
+/// subdirectories are skipped rather than failing the whole scan.
+fn scan_markdown_files(root: &Path, remaining: &mut usize) -> Vec<String> {
+    let mut out = Vec::new();
+    walk_markdown_files(root, remaining, 0, &mut out);
+    out
+}
+
+fn walk_markdown_files(dir: &Path, remaining: &mut usize, depth: usize, out: &mut Vec<String>) {
+    if depth >= WORKSPACE_SCAN_MAX_DEPTH || *remaining == 0 {
+        return;
+    }
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    let mut files: Vec<(String, PathBuf)> = Vec::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let path = entry.path();
+        match entry.file_type() {
+            Ok(ft) if ft.is_dir() => {
+                if !is_ignored_workspace_dir(&name) {
+                    dirs.push(path);
+                }
+            }
+            Ok(ft) if ft.is_file() && has_allowed_extension(&path) => files.push((name, path)),
+            _ => {}
+        }
+    }
+    dirs.sort_by(|a, b| {
+        natural_cmp(
+            &a.file_name().unwrap_or_default().to_string_lossy(),
+            &b.file_name().unwrap_or_default().to_string_lossy(),
+        )
+    });
+    files.sort_by(|a, b| natural_cmp(&a.0, &b.0));
+
+    for (_, path) in files {
+        if *remaining == 0 {
+            return;
+        }
+        *remaining -= 1;
+        out.push(path.to_string_lossy().into_owned());
+    }
+    for sub in dirs {
+        walk_markdown_files(&sub, remaining, depth + 1, out);
+    }
+}
+
+/// What a workspace holds, for the home screen's file browser: the number of
+/// text documents under the root plus a bounded sample of their paths.
+#[derive(serde::Serialize)]
+pub struct WorkspaceFiles {
+    pub count: usize,
+    pub files: Vec<String>,
+}
+
+/// Every readable text document under `path`, recursively — the data behind the
+/// home screen's "open folder and browse it" view, where the whole tree is laid
+/// out at once instead of the sidebar's lazy one-level-at-a-time expansion.
+///
+/// Bounded by [`WORKSPACE_SCAN_MAX_DEPTH`] and [`WORKSPACE_SCAN_MAX_FILES`];
+/// `count` is the real total found within those bounds, which is what the badge
+/// shows. `files` is capped at [`WORKSPACE_SCAN_FILES_PREVIEW`] entries so the
+/// payload stays small for a large workspace.
+#[tauri::command]
+pub fn list_workspace_files(path: String) -> Result<WorkspaceFiles, String> {
+    let root = Path::new(&path);
+    if !root.is_dir() {
+        return Err(t!("workspace.not_a_dir", path = path).into_owned());
+    }
+    let mut remaining = WORKSPACE_SCAN_MAX_FILES;
+    let found = scan_markdown_files(root, &mut remaining);
+    let count = found.len();
+    let files = found
+        .into_iter()
+        .take(WORKSPACE_SCAN_FILES_PREVIEW)
+        .collect();
+    Ok(WorkspaceFiles { count, files })
+}
+
+// ---- Wiki 链接 / Obsidian 嵌入解析 ----
+
+/// A resolved `[[wiki target]]`: the on-disk path plus optional file content
+/// and heading section used by Obsidian-style embeds.
+#[derive(serde::Serialize)]
+pub struct WikiResolution {
+    pub path: Option<String>,
+    pub content: Option<String>,
+    pub section: Option<String>,
+    pub matched_by: String,
+}
+
+/// Candidate file names for a wiki target with no extension. Markdown targets
+/// commonly omit `.md`, so try the common text extensions before searching.
+fn wiki_candidates(target: &str) -> Vec<String> {
+    let has_ext = Path::new(target).extension().is_some();
+    if has_ext {
+        vec![target.to_string()]
+    } else {
+        ALLOWED_TEXT_EXTENSIONS
+            .iter()
+            .map(|ext| format!("{target}.{ext}"))
+            .collect()
+    }
+}
+
+fn find_in_dir(dir: &Path, target: &str) -> Option<PathBuf> {
+    for candidate in wiki_candidates(target) {
+        let path = dir.join(&candidate);
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Breadth-first search for a file whose stem or file name matches `target`.
+/// Bounded by the same depth/file budget as the workspace scan.
+fn find_by_name(root: &Path, target: &str) -> Option<PathBuf> {
+    let target_lower = target.to_lowercase();
+    let mut queue = vec![(root.to_path_buf(), 0usize)];
+    let mut visited = 0usize;
+    while let Some((dir, depth)) = queue.pop() {
+        if depth > WORKSPACE_SCAN_MAX_DEPTH || visited > WORKSPACE_SCAN_MAX_FILES {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            visited += 1;
+            if visited > WORKSPACE_SCAN_MAX_FILES {
+                break;
+            }
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let path = entry.path();
+            match entry.file_type() {
+                Ok(ft) if ft.is_dir() => {
+                    if !is_ignored_workspace_dir(&name) {
+                        queue.push((path, depth + 1));
+                    }
+                }
+                Ok(ft) if ft.is_file() => {
+                    let stem = Path::new(&name)
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().to_lowercase())
+                        .unwrap_or_default();
+                    if stem == target_lower || name.to_lowercase() == target_lower {
+                        return Some(path);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    None
+}
+
+/// Extract a heading section: from a heading whose text matches `section`
+/// (case-insensitive, leading `#` stripped) up to the next heading of the same
+/// or higher level.
+fn extract_section(content: &str, section: &str) -> Option<String> {
+    let wanted = section.trim().trim_start_matches('#').trim().to_lowercase();
+    let lines: Vec<&str> = content.lines().collect();
+    let mut start = None;
+    let mut level = 0usize;
+    for (idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        let hashes = trimmed.chars().take_while(|c| *c == '#').count();
+        if hashes == 0 || hashes > 6 {
+            continue;
+        }
+        let text = trimmed[hashes..].trim().trim_end_matches('#').trim().to_lowercase();
+        if start.is_none() && text == wanted {
+            start = Some(idx);
+            level = hashes;
+            continue;
+        }
+        if let Some(begin) = start {
+            if hashes <= level {
+                return Some(lines[begin..idx].join("\n"));
+            }
+        }
+    }
+    start.map(|begin| lines[begin..].join("\n"))
+}
+
+/// Resolve a wiki target against the workspace root, then the current
+/// document's directory, then a bounded name search. `target#heading` selects a
+/// heading section when the target is a text document.
+#[tauri::command]
+pub fn resolve_wiki_target(
+    root: String,
+    from_path: String,
+    target: String,
+) -> Result<WikiResolution, String> {
+    let (name, section) = match target.split_once('#') {
+        Some((name, section)) => (name.trim().to_string(), Some(section.trim().to_string())),
+        None => (target.trim().to_string(), None),
+    };
+    if name.is_empty() {
+        return Ok(WikiResolution {
+            path: None,
+            content: None,
+            section: None,
+            matched_by: "empty".into(),
+        });
+    }
+
+    let root_path = Path::new(&root);
+    let from_dir = Path::new(&from_path).parent().unwrap_or(root_path);
+    let mut matched = find_in_dir(from_dir, &name)
+        .map(|p| (p, "relative".to_string()))
+        .or_else(|| find_in_dir(root_path, &name).map(|p| (p, "root".to_string())))
+        .or_else(|| find_by_name(root_path, &name).map(|p| (p, "search".to_string())));
+
+    if matched.is_none() {
+        // Absolute paths typed directly into the wiki syntax.
+        let direct = Path::new(&name);
+        if direct.is_file() {
+            matched = Some((direct.to_path_buf(), "absolute".into()));
+        }
+    }
+
+    let Some((path, matched_by)) = matched else {
+        return Ok(WikiResolution {
+            path: None,
+            content: None,
+            section: None,
+            matched_by: "missing".into(),
+        });
+    };
+
+    // Canonicalize before returning: a wiki target like `../public/logo.png`
+    // resolves through `..`, and the asset protocol refuses un-normalized
+    // paths containing `..`. Canonicalizing also resolves symlinks.
+    let path = fs::canonicalize(&path).unwrap_or(path);
+
+    let content = if has_allowed_extension(&path) {
+        fs::read_to_string(&path).ok()
+    } else {
+        None
+    };
+    let section_content = match (&content, &section) {
+        (Some(content), Some(section)) if !section.is_empty() => extract_section(content, section),
+        _ => None,
+    };
+
+    Ok(WikiResolution {
+        path: Some(strip_verbatim_prefix(path.to_string_lossy().into_owned())),
+        content,
+        section: section_content,
+        matched_by,
+    })
+}
+
 /// Image extensions the editor's "insert image" action accepts.
 const ALLOWED_IMAGE_EXTENSIONS: &[&str] =
     &["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "avif", "ico"];
@@ -651,6 +930,7 @@ mod workspace_tests {
     use super::{list_workspace_dir, natural_cmp};
     use std::cmp::Ordering;
     use std::fs;
+    use std::path::Path;
 
     #[test]
     fn natural_order_is_numeric_for_digit_runs() {
@@ -687,6 +967,150 @@ mod workspace_tests {
     #[test]
     fn listing_refuses_a_non_directory() {
         assert!(list_workspace_dir("/definitely/not/a/dir/openmd".into()).is_err());
+    }
+
+    #[test]
+    fn scan_finds_documents_at_every_depth_in_natural_order() {
+        let dir = scratch("ws-scan");
+        // 两条分支:一条只有一层,一条再深一层(顺带验证深度优先的递归顺序)
+        fs::create_dir_all(dir.join("notes").join("sub")).unwrap();
+        fs::create_dir_all(dir.join("notes").join("deep")).unwrap();
+        fs::write(dir.join("b.md"), "x").unwrap();
+        fs::write(dir.join("a10.md"), "x").unwrap();
+        fs::write(dir.join("a2.md"), "x").unwrap();
+        fs::write(dir.join("notes").join("sub").join("n2.md"), "x").unwrap();
+        fs::write(dir.join("notes").join("deep").join("deep.md"), "x").unwrap();
+
+        let mut remaining = 5000;
+        let found = super::scan_markdown_files(&dir, &mut remaining);
+
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| {
+                Path::new(p)
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .collect();
+        // 本层文件按自然序在前,然后才是子目录(深度优先)
+        assert_eq!(names, vec!["a2.md", "a10.md", "b.md", "deep.md", "n2.md"]);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn scan_skips_hidden_dirs_dependency_farms_and_non_text_files() {
+        let dir = scratch("ws-scan-junk");
+        fs::create_dir_all(dir.join(".git")).unwrap();
+        fs::create_dir_all(dir.join("node_modules").join("pkg")).unwrap();
+        fs::create_dir_all(dir.join(".hidden")).unwrap();
+        fs::write(dir.join("keep.md"), "x").unwrap();
+        fs::write(dir.join("pic.png"), "x").unwrap();
+        fs::write(dir.join("script.sh"), "x").unwrap();
+        fs::write(dir.join(".git").join("hidden.md"), "x").unwrap();
+        fs::write(dir.join("node_modules").join("pkg").join("dep.md"), "x").unwrap();
+        fs::write(dir.join(".hidden").join("hidden.md"), "x").unwrap();
+
+        let mut remaining = 5000;
+        let found = super::scan_markdown_files(&dir, &mut remaining);
+
+        assert_eq!(found.len(), 1, "only keep.md survives: {found:?}");
+        assert!(found[0].ends_with("keep.md"));
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn scan_stops_exactly_at_the_depth_limit() {
+        // 深度语义钉死:level k 的文件在 walk 里正好处于 depth k,而 depth 达到
+        // WORKSPACE_SCAN_MAX_DEPTH 的目录不再进入。所以「第 MAX_DEPTH-1 层必须
+        // 找得到、第 MAX_DEPTH 层必须找不到」才能发现 off-by-N —— 只断言"深链里
+        // 只找到根上那个文件"的话,把上限改成 1 也照样绿。
+        let dir = scratch("ws-scan-depth-exact");
+        let mut level = dir.clone();
+        let mut deepest_ok: Option<std::path::PathBuf> = None;
+        for depth in 1..=super::WORKSPACE_SCAN_MAX_DEPTH {
+            level = level.join("d");
+            fs::create_dir_all(&level).unwrap();
+            if depth == super::WORKSPACE_SCAN_MAX_DEPTH - 1 {
+                deepest_ok = Some(level.clone());
+            }
+        }
+        let inside = deepest_ok.expect("构造了至少一层");
+        fs::write(inside.join("inside.md"), "x").unwrap();
+        fs::write(level.join("past-limit.md"), "x").unwrap();
+
+        let mut remaining = 5000;
+        let found = super::scan_markdown_files(&dir, &mut remaining);
+
+        let names: Vec<String> = found
+            .iter()
+            .map(|p| Path::new(p).file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(
+            names,
+            vec!["inside.md"],
+            "第 {} 层要找到,第 {} 层不许进",
+            super::WORKSPACE_SCAN_MAX_DEPTH - 1,
+            super::WORKSPACE_SCAN_MAX_DEPTH
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_workspace_files_caps_the_preview_but_reports_the_real_count() {
+        let dir = scratch("ws-files-preview");
+        let extra = super::WORKSPACE_SCAN_FILES_PREVIEW + 7;
+        for i in 0..extra {
+            fs::write(dir.join(format!("f{i:04}.md")), "x").unwrap();
+        }
+
+        let got = super::list_workspace_files(dir.to_string_lossy().into_owned()).unwrap();
+
+        assert_eq!(got.count, extra, "count 是真实总数");
+        assert_eq!(
+            got.files.len(),
+            super::WORKSPACE_SCAN_FILES_PREVIEW,
+            "files 只给预览条数"
+        );
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn scan_respects_the_file_budget() {
+        let dir = scratch("ws-scan-budget");
+        for i in 0..10 {
+            fs::write(dir.join(format!("f{i}.md")), "x").unwrap();
+        }
+
+        let mut remaining = 4;
+        let found = super::scan_markdown_files(&dir, &mut remaining);
+
+        assert_eq!(found.len(), 4, "budget caps the walk: {found:?}");
+        assert_eq!(remaining, 0);
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_workspace_files_reports_the_count_and_refuses_a_non_directory() {
+        let dir = scratch("ws-files");
+        fs::create_dir_all(dir.join("sub")).unwrap();
+        fs::write(dir.join("a.md"), "x").unwrap();
+        fs::write(dir.join("sub").join("b.md"), "x").unwrap();
+        fs::write(dir.join("sub").join("skip.png"), "x").unwrap();
+
+        let got = super::list_workspace_files(dir.to_string_lossy().into_owned()).unwrap();
+        assert_eq!(got.count, 2);
+        assert_eq!(got.files.len(), 2);
+
+        assert!(super::list_workspace_files("/definitely/not/a/dir/openmd".into()).is_err());
+
+        fs::remove_dir_all(&dir).ok();
     }
 }
 

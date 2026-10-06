@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { HStack, Text } from "@chakra-ui/react";
 import { isDirty, useTabs } from "../stores/tabs";
 import { useToc } from "../stores/toc";
+import { IS_STORE_BUILD } from "../lib/build-flags";
 
 export function StatusBar() {
   const { t } = useTranslation();
@@ -43,9 +44,12 @@ export function StatusBar() {
           <Text>{t("shell.headingCount", { count: entries.length })}</Text>
         </>
       )}
-      <Text ms="auto" color="fg.faint">
-        {tab.error ? t("shell.openFailed") : t("shell.author")}
-      </Text>
+      {/* 商店版不展示作者文案;出错提示保留 */}
+      {(!IS_STORE_BUILD || tab.error) && (
+        <Text ms="auto" color="fg.faint">
+          {tab.error ? t("shell.openFailed") : t("shell.author")}
+        </Text>
+      )}
     </HStack>
   );
 }

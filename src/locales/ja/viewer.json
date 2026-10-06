@@ -11,6 +11,7 @@
   "viewer.toolbar.switchView": "プレビュー/コード表示を切り替える",
   "viewer.toolbar.preview": "プレビュー",
   "viewer.toolbar.code": "コード",
+  "viewer.toolbar.present": "プレゼン",
   "viewer.menu.copy": "コピー",
   "viewer.menu.copyImage": "画像をコピー",
   "viewer.menu.copyImageAddress": "画像のアドレスをコピー",

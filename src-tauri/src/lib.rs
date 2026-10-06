@@ -4,6 +4,7 @@ mod commands;
 mod editors;
 mod file_assoc;
 mod i18n;
+mod pkg;
 mod qq_group;
 mod stats;
 mod tray;
@@ -192,6 +193,8 @@ pub fn run() {
             commands::path_exists,
             commands::is_directory,
             commands::list_workspace_dir,
+            commands::list_workspace_files,
+            commands::resolve_wiki_target,
             commands::import_image,
             commands::allow_assets,
             editors::detect_editors,

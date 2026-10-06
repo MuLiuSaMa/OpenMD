@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { viewInAnimation } from "../theme/theme";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { useUpdate } from "../stores/update";
+import { IS_STORE_BUILD } from "../lib/build-flags";
 
 /**
  * 新版本更新小弹窗(固定右下角),与关于页的检查更新共用同一个 store:
@@ -18,7 +19,8 @@ export function UpdatePopup() {
     useUpdate();
   const logRef = useRef<HTMLDivElement>(null);
 
-  if (phase === "hidden") return null;
+  // 商店版(MSIX)更新由商店接管,永不弹出。
+  if (IS_STORE_BUILD || phase === "hidden") return null;
 
   return (
     <Box

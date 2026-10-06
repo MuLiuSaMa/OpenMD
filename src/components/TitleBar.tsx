@@ -1,11 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Box, Button, Grid, HStack, IconButton, Input, Separator } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Grid,
+  HStack,
+  IconButton,
+  Input,
+  Menu,
+  Portal,
+  Separator,
+} from "@chakra-ui/react";
 import { useTheme } from "next-themes";
-import { FolderOpen, FolderTree, Minus, Moon, PanelLeft, Plus, Settings, StretchHorizontal, Sun } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  FolderOpen,
+  FolderTree,
+  Minus,
+  Moon,
+  PanelLeft,
+  Plus,
+  Settings,
+  StretchHorizontal,
+  Sun,
+} from "lucide-react";
 import { useSettings } from "../stores/settings";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
+import { openStandaloneFiles } from "../lib/openStandaloneFiles";
 import { useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
 import { IS_MACOS } from "../utils/platform";
@@ -55,33 +78,54 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
     }
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState(false);
+  const openMenuCloseTimer = useRef<number | null>(null);
+
+  const cancelOpenMenuClose = () => {
+    if (openMenuCloseTimer.current !== null) {
+      window.clearTimeout(openMenuCloseTimer.current);
+      openMenuCloseTimer.current = null;
+    }
+  };
+
+  const showOpenMenu = () => {
+    cancelOpenMenuClose();
+    setOpenMenu(true);
+  };
+
+  const scheduleOpenMenuClose = () => {
+    cancelOpenMenuClose();
+    openMenuCloseTimer.current = window.setTimeout(() => {
+      openMenuCloseTimer.current = null;
+      setOpenMenu(false);
+    }, 120);
+  };
+
+  useEffect(() => cancelOpenMenuClose, []);
 
   const handleOpen = async () => {
     try {
       const paths = await openFileDialog();
-      for (const p of paths ?? []) {
-        await openPaths(p);
-      }
+      await openStandaloneFiles(paths ?? []);
     } catch (e) {
       onOpenError?.(String(e));
     }
   };
 
-  // 侧栏按钮与 Tab 联动:侧栏开着但显示另一个 Tab 时,点击是切换而不是关闭。
-  const filesShown = tocOpen && sidebarTab === "files";
+  // 目录按钮与 Tab 联动:侧栏开着但显示文件页时,点击是切换而不是关闭。
   const tocShown = tocOpen && sidebarTab === "toc";
   const handleWorkspace = async () => {
-    if (filesShown) {
-      toggleToc();
-      return;
-    }
+    // 打开文件夹是内容操作,不应复用侧栏按钮的收起逻辑。
     setSidebarTab("files");
     if (!tocOpen) toggleToc();
     const picked = await openFolderDialog().catch((e) => {
       onOpenError?.(String(e));
       return null;
     });
-    if (picked) await useWorkspace.getState().openFolder(picked);
+    if (!picked) return;
+    // 选完文件夹直接进预览页(有文档就打开第一篇),而不是只把树塞进侧栏。
+    const { firstDoc } = await useWorkspace.getState().openFolder(picked);
+    if (firstDoc) await openPaths(firstDoc);
   };
   const handleTocButton = () => {
     if (tocOpen && sidebarTab === "files") {
@@ -132,29 +176,74 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
         </Box>
 
         <HStack gap={1} justifySelf="center" data-tauri-drag-region="">
-          <Button
-            aria-label={t("shell.openFileShortcut")}
-            title={t("shell.openFileShortcut")}
-            variant="ghost"
-            size="sm"
-            gap={1.5}
-            onClick={handleOpen}
+          <Menu.Root
+            open={openMenu}
+            onOpenChange={(e) => setOpenMenu(e.open)}
+            positioning={{ placement: "bottom-start" }}
           >
-            <FolderOpen size={15} />
-            {t("shell.openFile")}
-          </Button>
-
-          <Button
-            aria-label={t("shell.openFolderShortcut")}
-            title={t("shell.openFolderShortcut")}
-            variant={filesShown ? "subtle" : "ghost"}
-            size="sm"
-            gap={1.5}
-            onClick={() => void handleWorkspace()}
-          >
-            <FolderTree size={15} />
-            {t("shell.openFolder")}
-          </Button>
+            <Menu.Trigger asChild>
+              <Button
+                aria-label={t("shell.open")}
+                title={t("shell.open")}
+                variant="ghost"
+                size="sm"
+                gap={1.5}
+                onPointerEnter={showOpenMenu}
+                onPointerLeave={scheduleOpenMenuClose}
+              >
+                <FolderOpen size={15} />
+                {t("shell.open")}
+                <ChevronDown size={12} opacity={0.55} />
+              </Button>
+            </Menu.Trigger>
+            <Portal>
+              <Menu.Positioner zIndex={1000}>
+                <Menu.Content
+                  minW="160px"
+                  bg="bg"
+                  borderWidth="1px"
+                  borderColor="border.subtle"
+                  borderRadius="10px"
+                  boxShadow="md"
+                  overflow="hidden"
+                  p={1}
+                  onPointerEnter={showOpenMenu}
+                  onPointerLeave={scheduleOpenMenuClose}
+                >
+                  <Menu.Item
+                    value="open-file"
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                    fontSize="sm"
+                    px={2}
+                    py={1.5}
+                    borderRadius="6px"
+                    cursor="pointer"
+                    onClick={() => void handleOpen()}
+                  >
+                    <FileText size={14} />
+                    {t("shell.openFile")}
+                  </Menu.Item>
+                  <Menu.Item
+                    value="open-folder"
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                    fontSize="sm"
+                    px={2}
+                    py={1.5}
+                    borderRadius="6px"
+                    cursor="pointer"
+                    onClick={() => void handleWorkspace()}
+                  >
+                    <FolderTree size={14} />
+                    {t("shell.openFolder")}
+                  </Menu.Item>
+                </Menu.Content>
+              </Menu.Positioner>
+            </Portal>
+          </Menu.Root>
 
           <Separator orientation="vertical" h="20px" />
 

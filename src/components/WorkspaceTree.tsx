@@ -159,9 +159,17 @@ export function WorkspaceTree({ onOpenFolder }: { onOpenFolder: () => void }) {
           depth={0}
           isDir
           expanded
+          active={root === activePath}
           onClick={() => void toggleDir(root)}
         />
-        {renderNodes(root, 1)}
+        {expanded.has(root) && renderNodes(root, 1)}
+        {/* 目录读取成功但里面既没有子目录也没有文档:明说一句,别让用户对着一片空白。
+            (读取失败时 children 里没有这个 key,不显示提示,免得误报"空文件夹"。) */}
+        {children.get(root)?.length === 0 && (
+          <Text fontSize="xs" color="fg.faint" px={3} py={2}>
+            {t("shell.workspaceNoFiles")}
+          </Text>
+        )}
       </Box>
       <FloatingScrollbar targetRef={listRef} />
     </Box>

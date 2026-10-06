@@ -110,6 +110,39 @@ export async function listWorkspaceDir(path: string): Promise<WorkspaceEntry[]> 
   return invoke("list_workspace_dir", { path });
 }
 
+/** What a whole workspace holds, for the home screen's file browser. */
+export interface WorkspaceFiles {
+  /** Total readable text documents found under the root (bounded scan). */
+  count: number;
+  /** Bounded sample of those absolute paths. */
+  files: string[];
+}
+
+/**
+ * Every readable text document under `path`, recursively (bounded depth/count).
+ * Optional by design: an app build that predates this command rejects the
+ * invoke, and callers must degrade to "count unknown" rather than fail.
+ */
+export async function listWorkspaceFiles(path: string): Promise<WorkspaceFiles> {
+  return invoke("list_workspace_files", { path });
+}
+
+export interface WikiResolution {
+  path: string | null;
+  content: string | null;
+  section: string | null;
+  matched_by: string;
+}
+
+/** Resolve `[[target]]` / `![[target]]` against the workspace root. */
+export async function resolveWikiTarget(
+  root: string,
+  fromPath: string,
+  target: string,
+): Promise<WikiResolution> {
+  return invoke("resolve_wiki_target", { root, fromPath, target });
+}
+
 /** Whether a dropped path is a folder (→ open as workspace). */
 export async function isDirectory(path: string): Promise<boolean> {
   return invoke("is_directory", { path });
