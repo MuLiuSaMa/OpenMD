@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import {
   Box,
   Button,
+  chakra,
   Dialog,
   Flex,
   HStack,
@@ -223,8 +224,7 @@ function AppearanceSection() {
         </Text>
         <HStack gap={2} minW={0}>
           {backgroundSrc && (
-            <Box
-              as="button"
+            <chakra.button
               type="button"
               title={t("settings.appearance.backgroundChoose")}
               onClick={() => void pickBackground()}
@@ -243,7 +243,7 @@ function AppearanceSection() {
                 draggable={false}
                 style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
               />
-            </Box>
+            </chakra.button>
           )}
           <Text fontSize="xs" color="fg.faint" truncate maxW="160px" title={backgroundImage ?? undefined}>
             {backgroundName ?? t("settings.appearance.backgroundNone")}
