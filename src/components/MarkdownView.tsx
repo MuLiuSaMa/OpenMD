@@ -1233,69 +1233,180 @@ export function MarkdownView({ tab }: { tab: Tab }) {
   };
 
   return (
-    <Box flex={1} position="relative" display="flex" minW={0}>
-      <Box
-        ref={scrollRef}
-        className="no-scrollbar"
-        flex={1}
-        overflowY="auto"
-        onScroll={handleScroll}
-        onContextMenu={onContentContextMenu}
+    <Box flex={1} position="relative" display="flex" flexDirection="column" minW={0} minH={0}>
+      {/* 工具栏独占一行,与正文滚动区分开,避免铺满模式或目录跳转时遮挡内容。 */}
+      <Flex
+        flexShrink={0}
+        alignItems="center"
+        justifyContent="space-between"
+        flexWrap="wrap"
+        gap={2}
+        pe="16px"
       >
-        {viewMode === "code" ? (
-          // 挂 md-body 类以复用 .md-body .hljs-* 亮/暗 token 配色。
-          <div className="md-body md-code-view">
-            {/* 高亮层与透明 textarea 网格叠放,编辑时视觉不变、光标可输入。 */}
-            <div className="md-code-editor">
-              <pre ref={codePreRef} className="md-code-pre" aria-hidden={editing || undefined}>
-                <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
-              </pre>
-              {editing && (
-                <textarea
-                  ref={codeTextareaRef}
-                  className="md-code-textarea"
-                  value={codeSource}
-                  spellCheck={false}
-                  onChange={(e) => updateDraft(tab.id, e.target.value)}
-                />
-              )}
-            </div>
-          </div>
-        ) : (
-          <>
-            {frontmatter && Object.keys(frontmatter).length > 0 && (
-              <div className="md-frontmatter">
-                {Object.entries(frontmatter)
-                  .slice(0, 8)
-                  .map(([key, value]) => (
-                    <span key={key} className="md-frontmatter-field">
-                      <span className="md-frontmatter-key">{key}</span>
-                      <span className="md-frontmatter-value">
-                        {Array.isArray(value) ? value.join(", ") : String(value)}
-                      </span>
-                    </span>
-                  ))}
+        <Box
+          flexShrink={0}
+          borderRadius="8px"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.panel"
+          boxShadow="sm"
+          backdropFilter="blur(8px)"
+          display="flex"
+          alignItems="center"
+          p="2px"
+          gap="2px"
+        >
+          <Button
+            aria-label={t("viewer.toolbar.toggleEdit")}
+            title={t("viewer.toolbar.editTitle")}
+            size="xs"
+            variant="ghost"
+            gap={1.5}
+            px={2}
+            bg={editMode ? "fg" : "transparent"}
+            color={editMode ? "bg" : "fg"}
+            _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
+            onClick={toggleEditMode}
+          >
+            <Pencil size={13} />
+            {t("viewer.toolbar.edit")}
+          </Button>
+          <Button
+            aria-label={t("viewer.toolbar.saveShortcut")}
+            title={t("viewer.toolbar.saveShortcut")}
+            size="xs"
+            variant="ghost"
+            gap={1.5}
+            px={2}
+            disabled={!dirty}
+            onClick={() => void saveTab(tab.id)}
+          >
+            <Save size={13} />
+            {t("viewer.toolbar.save")}
+          </Button>
+        </Box>
+        <Box
+          flexShrink={0}
+          ms="auto"
+          borderRadius="8px"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.panel"
+          boxShadow="sm"
+          backdropFilter="blur(8px)"
+          display="flex"
+          alignItems="center"
+          p="2px"
+        >
+          <SegmentGroup.Root
+            size="xs"
+            value={viewMode}
+            onValueChange={(e) => {
+              const next = e.value as ViewMode;
+              withViewTransition(() => setViewMode(next));
+            }}
+            aria-label={t("viewer.toolbar.switchView")}
+          >
+            <SegmentGroup.Indicator />
+            <SegmentGroup.Item value="preview">
+              <SegmentGroup.ItemHiddenInput />
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+                <Eye size={13} />
+                {t("viewer.toolbar.preview")}
+              </SegmentGroup.ItemText>
+            </SegmentGroup.Item>
+            <SegmentGroup.Item value="code">
+              <SegmentGroup.ItemHiddenInput />
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+                <Code2 size={13} />
+                {t("viewer.toolbar.code")}
+              </SegmentGroup.ItemText>
+            </SegmentGroup.Item>
+          </SegmentGroup.Root>
+          {isMarp && viewMode === "preview" && (
+            <Button
+              aria-label={t("viewer.toolbar.present")}
+              title={t("viewer.toolbar.present")}
+              size="xs"
+              variant="ghost"
+              gap={1}
+              px={2}
+              ms={1}
+              onClick={() => setPresenting(true)}
+            >
+              <Play size={13} />
+              {t("viewer.toolbar.present")}
+            </Button>
+          )}
+        </Box>
+      </Flex>
+      <Box flex={1} position="relative" display="flex" minW={0} minH={0}>
+        <Box
+          ref={scrollRef}
+          className="no-scrollbar"
+          flex={1}
+          minW={0}
+          minH={0}
+          overflowY="auto"
+          onScroll={handleScroll}
+          onContextMenu={onContentContextMenu}
+        >
+          {viewMode === "code" ? (
+            // 挂 md-body 类以复用 .md-body .hljs-* 亮/暗 token 配色。
+            <div className="md-body md-code-view">
+              {/* 高亮层与透明 textarea 网格叠放,编辑时视觉不变、光标可输入。 */}
+              <div className="md-code-editor">
+                <pre ref={codePreRef} className="md-code-pre" aria-hidden={editing || undefined}>
+                  <code dangerouslySetInnerHTML={{ __html: codeHtml }} />
+                </pre>
+                {editing && (
+                  <textarea
+                    ref={codeTextareaRef}
+                    className="md-code-textarea"
+                    value={codeSource}
+                    spellCheck={false}
+                    onChange={(e) => updateDraft(tab.id, e.target.value)}
+                  />
+                )}
               </div>
-            )}
-            <article
-              ref={articleRef}
-              className="md-body"
-              contentEditable={editing || undefined}
-              suppressContentEditableWarning
-              onMouseOver={onArticleMouseOver}
-              style={{
-                // 内容宽度只由左右边距决定:边距 0 = 铺满,调大即收窄阅读栏,连续无跳变。
-                maxWidth: "100%",
-                margin: "0 auto",
-                padding: `32px ${contentPadding}px 64px`,
-                fontSize,
-                ["--md-font-size" as string]: `${fontSize}px`,
-                transition: "font-size 0.2s ease, padding 0.15s ease",
-              }}
-              dangerouslySetInnerHTML={{ __html: html }}
-            />
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              {frontmatter && Object.keys(frontmatter).length > 0 && (
+                <div className="md-frontmatter">
+                  {Object.entries(frontmatter)
+                    .slice(0, 8)
+                    .map(([key, value]) => (
+                      <span key={key} className="md-frontmatter-field">
+                        <span className="md-frontmatter-key">{key}</span>
+                        <span className="md-frontmatter-value">
+                          {Array.isArray(value) ? value.join(", ") : String(value)}
+                        </span>
+                      </span>
+                    ))}
+                </div>
+              )}
+              <article
+                ref={articleRef}
+                className="md-body"
+                contentEditable={editing || undefined}
+                suppressContentEditableWarning
+                onMouseOver={onArticleMouseOver}
+                style={{
+                  // 内容宽度只由左右边距决定:边距 0 = 铺满,调大即收窄阅读栏,连续无跳变。
+                  maxWidth: "100%",
+                  margin: "0 auto",
+                  padding: `32px ${contentPadding}px 64px`,
+                  fontSize,
+                  ["--md-font-size" as string]: `${fontSize}px`,
+                  transition: "font-size 0.2s ease, padding 0.15s ease",
+                }}
+                dangerouslySetInnerHTML={{ __html: html }}
+              />
+            </>
+          )}
+        </Box>
+        <FloatingScrollbar targetRef={scrollRef} />
       </Box>
       {presenting && tab.path && (
         <PresentationMode
@@ -1304,7 +1415,6 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           onExit={() => setPresenting(false)}
         />
       )}
-      <FloatingScrollbar targetRef={scrollRef} />
       {/* 图片拖拽手柄:视口定位在图片右下角,拖动实时调宽。 */}
       {resizeHandle && editing && viewMode === "preview" && (
         <Box
@@ -1333,109 +1443,6 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           onClose={() => setMenu(null)}
         />
       )}
-      {/* 左上角:编辑开关 + 保存,紧贴内容区左缘,与右上角 预览/代码 滑块对应。 */}
-      <Box
-        position="absolute"
-        top="0"
-        left="0"
-        zIndex={40}
-        borderRadius="8px"
-        borderWidth="1px"
-        borderColor="border.subtle"
-        bg="bg.panel"
-        boxShadow="sm"
-        backdropFilter="blur(8px)"
-        display="flex"
-        alignItems="center"
-        p="2px"
-        gap="2px"
-      >
-        <Button
-          aria-label={t("viewer.toolbar.toggleEdit")}
-          title={t("viewer.toolbar.editTitle")}
-          size="xs"
-          variant="ghost"
-          gap={1.5}
-          px={2}
-          bg={editMode ? "fg" : "transparent"}
-          color={editMode ? "bg" : "fg"}
-          _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
-          onClick={toggleEditMode}
-        >
-          <Pencil size={13} />
-          {t("viewer.toolbar.edit")}
-        </Button>
-        <Button
-          aria-label={t("viewer.toolbar.saveShortcut")}
-          title={t("viewer.toolbar.saveShortcut")}
-          size="xs"
-          variant="ghost"
-          gap={1.5}
-          px={2}
-          disabled={!dirty}
-          onClick={() => void saveTab(tab.id)}
-        >
-          <Save size={13} />
-          {t("viewer.toolbar.save")}
-        </Button>
-      </Box>
-      {/* 视图切换:顶部贴合内容区右上,右侧留出悬浮滚动条(4px+12px)的位置。 */}
-      <Box
-        position="absolute"
-        top="0"
-        right="16px"
-        zIndex={40}
-        borderRadius="8px"
-        borderWidth="1px"
-        borderColor="border.subtle"
-        bg="bg.panel"
-        boxShadow="sm"
-        backdropFilter="blur(8px)"
-        display="flex"
-        alignItems="center"
-        p="2px"
-      >
-        <SegmentGroup.Root
-          size="xs"
-          value={viewMode}
-          onValueChange={(e) => {
-            const next = e.value as ViewMode;
-            withViewTransition(() => setViewMode(next));
-          }}
-          aria-label={t("viewer.toolbar.switchView")}
-        >
-          <SegmentGroup.Indicator />
-          <SegmentGroup.Item value="preview">
-            <SegmentGroup.ItemHiddenInput />
-            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-              <Eye size={13} />
-              {t("viewer.toolbar.preview")}
-            </SegmentGroup.ItemText>
-          </SegmentGroup.Item>
-          <SegmentGroup.Item value="code">
-            <SegmentGroup.ItemHiddenInput />
-            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-              <Code2 size={13} />
-              {t("viewer.toolbar.code")}
-            </SegmentGroup.ItemText>
-          </SegmentGroup.Item>
-        </SegmentGroup.Root>
-        {isMarp && viewMode === "preview" && (
-          <Button
-            aria-label={t("viewer.toolbar.present")}
-            title={t("viewer.toolbar.present")}
-            size="xs"
-            variant="ghost"
-            gap={1}
-            px={2}
-            ms={1}
-            onClick={() => setPresenting(true)}
-          >
-            <Play size={13} />
-            {t("viewer.toolbar.present")}
-          </Button>
-        )}
-      </Box>
     </Box>
   );
 }
