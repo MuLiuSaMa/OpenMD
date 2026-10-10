@@ -9,11 +9,9 @@ import {
   Image as ImageIcon,
   ImagePlus,
   Link2,
-  Pencil,
   Play,
   Redo2,
   Replace,
-  Save,
   Scissors,
   Undo2,
 } from "lucide-react";
@@ -261,16 +259,14 @@ function splitHighlightedLines(html: string): string[] {
 
 export function MarkdownView({ tab }: { tab: Tab }) {
   const { t } = useTranslation();
-  const { fontSize, contentPadding, viewMode, setViewMode, editMode, toggleEditMode } = useSettings();
+  const { fontSize, contentPadding, viewMode, setViewMode, editMode } = useSettings();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();
   const setScrollInStore = useTabs((s) => s.setScroll);
   const updateDraft = useTabs((s) => s.updateDraft);
-  const saveTab = useTabs((s) => s.saveTab);
 
   const editing = editMode && tab.path !== null;
-  const dirty = tab.draft !== null && tab.draft !== tab.content;
   const [presenting, setPresenting] = useState(false);
 
   const baseDir = tab.path ? dirnameOf(tab.path) : undefined;
@@ -1243,48 +1239,6 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         gap={2}
         pe="16px"
       >
-        <Box
-          flexShrink={0}
-          borderRadius="8px"
-          borderWidth="1px"
-          borderColor="border.subtle"
-          bg="bg.panel"
-          boxShadow="sm"
-          backdropFilter="blur(8px)"
-          display="flex"
-          alignItems="center"
-          p="2px"
-          gap="2px"
-        >
-          <Button
-            aria-label={t("viewer.toolbar.toggleEdit")}
-            title={t("viewer.toolbar.editTitle")}
-            size="xs"
-            variant="ghost"
-            gap={1.5}
-            px={2}
-            bg={editMode ? "fg" : "transparent"}
-            color={editMode ? "bg" : "fg"}
-            _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
-            onClick={toggleEditMode}
-          >
-            <Pencil size={13} />
-            {t("viewer.toolbar.edit")}
-          </Button>
-          <Button
-            aria-label={t("viewer.toolbar.saveShortcut")}
-            title={t("viewer.toolbar.saveShortcut")}
-            size="xs"
-            variant="ghost"
-            gap={1.5}
-            px={2}
-            disabled={!dirty}
-            onClick={() => void saveTab(tab.id)}
-          >
-            <Save size={13} />
-            {t("viewer.toolbar.save")}
-          </Button>
-        </Box>
         <Box
           flexShrink={0}
           ms="auto"

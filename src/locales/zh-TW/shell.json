@@ -40,5 +40,7 @@
   "shell.headingCount": "{{count}} 個標題",
   "shell.openFailed": "開啟失敗",
   "shell.author": "作者：木流",
-  "shell.noHeadings": "無標題"
+  "shell.noHeadings": "無標題",
+  "shell.editModeOn": "已進入編輯模式",
+  "shell.editModeOff": "已退出編輯模式"
 }

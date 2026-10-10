@@ -40,5 +40,7 @@
   "shell.headingCount": "{{count}} 個の見出し",
   "shell.openFailed": "開けませんでした",
   "shell.author": "作者:木流",
-  "shell.noHeadings": "見出しなし"
+  "shell.noHeadings": "見出しなし",
+  "shell.editModeOn": "編集モードに入りました",
+  "shell.editModeOff": "編集モードを終了しました"
 }

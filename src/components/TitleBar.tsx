@@ -22,7 +22,9 @@ import {
   Minus,
   Moon,
   PanelLeft,
+  Pencil,
   Plus,
+  Save,
   Settings,
   StretchHorizontal,
   Sun,
@@ -31,7 +33,7 @@ import { useSettings, MAX_CONTENT_PADDING } from "../stores/settings";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
-import { useTabs } from "../stores/tabs";
+import { isDirty, useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
 import { IS_MACOS } from "../utils/platform";
 import { SettingsModal } from "./SettingsModal";
@@ -60,9 +62,24 @@ function ThemeToggle() {
 
 export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void }) {
   const { t } = useTranslation();
-  const { fontSize, setFontSize, tocOpen, toggleToc, sidebarTab, setSidebarTab, contentPadding, setContentPadding } =
-    useSettings();
+  const {
+    fontSize,
+    setFontSize,
+    tocOpen,
+    toggleToc,
+    sidebarTab,
+    setSidebarTab,
+    contentPadding,
+    setContentPadding,
+    editMode,
+    toggleEditMode,
+  } = useSettings();
   const openPaths = useTabs((s) => s.openPath);
+  const activeTab = useTabs((s) => s.tabs.find((x) => x.id === s.activeId));
+  const saveTab = useTabs((s) => s.saveTab);
+  // 编辑/保存属于「当前文档」:无打开的文档时不显示(首页不渲染顶栏,这里仅作兜底)。
+  const canEdit = !!activeTab?.path;
+  const dirty = activeTab ? isDirty(activeTab) : false;
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
 
@@ -236,6 +253,38 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
         </Box>
 
         <HStack gap={1} justifySelf="center" data-tauri-drag-region="">
+          {/* 编辑/保存:从正文区移到顶栏「打开」左侧,作用于当前文档。 */}
+          {canEdit && (
+            <>
+              <Button
+                aria-label={t("viewer.toolbar.toggleEdit")}
+                title={t("viewer.toolbar.editTitle")}
+                variant="ghost"
+                size="sm"
+                gap={1.5}
+                bg={editMode ? "fg" : "transparent"}
+                color={editMode ? "bg" : "fg"}
+                _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
+                onClick={toggleEditMode}
+              >
+                <Pencil size={15} />
+                {t("viewer.toolbar.edit")}
+              </Button>
+              <Button
+                aria-label={t("viewer.toolbar.saveShortcut")}
+                title={t("viewer.toolbar.saveShortcut")}
+                variant="ghost"
+                size="sm"
+                gap={1.5}
+                disabled={!dirty}
+                onClick={() => activeTab && void saveTab(activeTab.id)}
+              >
+                <Save size={15} />
+                {t("viewer.toolbar.save")}
+              </Button>
+              <Separator orientation="vertical" h="20px" />
+            </>
+          )}
           <Menu.Root
             open={openMenu}
             onOpenChange={(e) => setOpenMenu(e.open)}

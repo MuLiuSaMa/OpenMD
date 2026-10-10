@@ -40,5 +40,7 @@
   "shell.headingCount": "{{count}} headings",
   "shell.openFailed": "Failed to open",
   "shell.author": "Author: 木流",
-  "shell.noHeadings": "No headings"
+  "shell.noHeadings": "No headings",
+  "shell.editModeOn": "Edit mode on",
+  "shell.editModeOff": "Edit mode off"
 }
