@@ -317,6 +317,7 @@ export default function App() {
     <Flex
       direction="column"
       h="100vh"
+      className="app-shell"
       // 有自定义背景图时让出底色,露出底层的模糊图片;无背景时保持原来的画布色。
       bg={backgroundImage ? "transparent" : "bg.canvas"}
       color="fg"

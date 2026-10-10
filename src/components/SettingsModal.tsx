@@ -39,6 +39,7 @@ import { useUpdate } from "../stores/update";
 import { IS_STORE_BUILD } from "../lib/build-flags";
 import { isMdAssociated, openImageDialog, registerMdAssociation, unregisterMdAssociation } from "../tauri/api";
 import { useBackgroundSrc } from "../lib/useBackgroundSrc";
+import { useOverlayBlur } from "../lib/overlayBlur";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { QqGroupSection } from "./QqGroupSection";
 
@@ -245,7 +246,7 @@ function AppearanceSection() {
               />
             </chakra.button>
           )}
-          <Text fontSize="xs" color="fg.faint" truncate maxW="160px" title={backgroundImage ?? undefined}>
+          <Text fontSize="xs" color="fg.subtle" truncate maxW="160px" title={backgroundImage ?? undefined}>
             {backgroundName ?? t("settings.appearance.backgroundNone")}
           </Text>
           <Button size="xs" variant="subtle" gap={1} onClick={() => void pickBackground()}>
@@ -632,6 +633,8 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
   const { t } = useTranslation();
   const [section, setSection] = useState<SectionId>("general");
   const contentRef = useRef<HTMLDivElement>(null);
+  // 打开时模糊整个 App 内容(见 lib/overlayBlur.ts)。
+  useOverlayBlur(open);
 
   return (
     <Dialog.Root
@@ -643,7 +646,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
       size="full"
     >
       <Portal>
-        <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px)" />
+        <Dialog.Backdrop bg="blackAlpha.300" />
         <Dialog.Positioner>
           <Dialog.Content
             borderRadius="12px"

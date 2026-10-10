@@ -1,0 +1,20 @@
+/*
+ * App 外壳样式。
+ *
+ * 弹窗打开时给整个 App 内容加 `filter: blur()`,做出「背景虚化」效果。
+ * 不用 Dialog.Backdrop 的 backdrop-filter:它在 WebView2 中会按合成层
+ * 部分生效,导致有的文字被糊、有的没糊,背景图反而不糊(见 lib/overlayBlur.ts)。
+ */
+.app-shell {
+  transition: filter 0.18s ease;
+}
+
+html.overlay-open .app-shell {
+  filter: blur(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell {
+    transition: none;
+  }
+}

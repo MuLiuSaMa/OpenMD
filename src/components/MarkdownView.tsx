@@ -1230,70 +1230,63 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
   return (
     <Box flex={1} position="relative" display="flex" flexDirection="column" minW={0} minH={0}>
-      {/* 工具栏独占一行,与正文滚动区分开,避免铺满模式或目录跳转时遮挡内容。 */}
-      <Flex
-        flexShrink={0}
+      {/* 「预览/代码」悬浮在内容区右上角,不单独占一行(编辑/保存已移入顶栏)。 */}
+      <Box
+        position="absolute"
+        top="8px"
+        right="16px"
+        zIndex={40}
+        borderRadius="8px"
+        borderWidth="1px"
+        borderColor="border.subtle"
+        bg="bg.panel"
+        boxShadow="sm"
+        backdropFilter="blur(8px)"
+        display="flex"
         alignItems="center"
-        justifyContent="space-between"
-        flexWrap="wrap"
-        gap={2}
-        pe="16px"
+        p="2px"
       >
-        <Box
-          flexShrink={0}
-          ms="auto"
-          borderRadius="8px"
-          borderWidth="1px"
-          borderColor="border.subtle"
-          bg="bg.panel"
-          boxShadow="sm"
-          backdropFilter="blur(8px)"
-          display="flex"
-          alignItems="center"
-          p="2px"
+        <SegmentGroup.Root
+          size="xs"
+          value={viewMode}
+          onValueChange={(e) => {
+            const next = e.value as ViewMode;
+            withViewTransition(() => setViewMode(next));
+          }}
+          aria-label={t("viewer.toolbar.switchView")}
         >
-          <SegmentGroup.Root
+          <SegmentGroup.Indicator />
+          <SegmentGroup.Item value="preview">
+            <SegmentGroup.ItemHiddenInput />
+            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+              <Eye size={13} />
+              {t("viewer.toolbar.preview")}
+            </SegmentGroup.ItemText>
+          </SegmentGroup.Item>
+          <SegmentGroup.Item value="code">
+            <SegmentGroup.ItemHiddenInput />
+            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+              <Code2 size={13} />
+              {t("viewer.toolbar.code")}
+            </SegmentGroup.ItemText>
+          </SegmentGroup.Item>
+        </SegmentGroup.Root>
+        {isMarp && viewMode === "preview" && (
+          <Button
+            aria-label={t("viewer.toolbar.present")}
+            title={t("viewer.toolbar.present")}
             size="xs"
-            value={viewMode}
-            onValueChange={(e) => {
-              const next = e.value as ViewMode;
-              withViewTransition(() => setViewMode(next));
-            }}
-            aria-label={t("viewer.toolbar.switchView")}
+            variant="ghost"
+            gap={1}
+            px={2}
+            ms={1}
+            onClick={() => setPresenting(true)}
           >
-            <SegmentGroup.Indicator />
-            <SegmentGroup.Item value="preview">
-              <SegmentGroup.ItemHiddenInput />
-              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-                <Eye size={13} />
-                {t("viewer.toolbar.preview")}
-              </SegmentGroup.ItemText>
-            </SegmentGroup.Item>
-            <SegmentGroup.Item value="code">
-              <SegmentGroup.ItemHiddenInput />
-              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-                <Code2 size={13} />
-                {t("viewer.toolbar.code")}
-              </SegmentGroup.ItemText>
-            </SegmentGroup.Item>
-          </SegmentGroup.Root>
-          {isMarp && viewMode === "preview" && (
-            <Button
-              aria-label={t("viewer.toolbar.present")}
-              title={t("viewer.toolbar.present")}
-              size="xs"
-              variant="ghost"
-              gap={1}
-              px={2}
-              ms={1}
-              onClick={() => setPresenting(true)}
-            >
-              <Play size={13} />
-              {t("viewer.toolbar.present")}
-            </Button>
-          )}
-        </Box>
-      </Flex>
+            <Play size={13} />
+            {t("viewer.toolbar.present")}
+          </Button>
+        )}
+      </Box>
       <Box flex={1} position="relative" display="flex" minW={0} minH={0}>
         <Box
           ref={scrollRef}

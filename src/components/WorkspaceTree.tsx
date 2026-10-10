@@ -35,12 +35,12 @@ function Row({ name, depth, isDir, expanded, active, onClick }: RowProps) {
       pr={2}
       borderRadius="sm"
       cursor="pointer"
-      color={active ? "fg" : "fg.muted"}
+      color="fg"
       bg={active ? "bg.subtle" : "transparent"}
       textOverflow="ellipsis"
       overflow="hidden"
       whiteSpace="nowrap"
-      _hover={{ color: "fg", bg: "bg.subtle" }}
+      _hover={{ bg: "bg.subtle" }}
       onClick={onClick}
       title={name}
     >
@@ -87,8 +87,8 @@ export function WorkspaceTree({ onOpenFolder }: { onOpenFolder: () => void }) {
   if (!root) {
     return (
       <VStack gap={3} px={4} py={10} align="center">
-        <FolderOpen size={22} color="var(--chakra-colors-fg-faint)" />
-        <Text fontSize="xs" color="fg.faint" textAlign="center" lineHeight="1.6">
+        <FolderOpen size={22} color="var(--chakra-colors-fg-subtle)" />
+        <Text fontSize="xs" color="fg.subtle" textAlign="center" lineHeight="1.6">
           {t("shell.workspaceEmpty")}
         </Text>
         <Button
@@ -166,7 +166,7 @@ export function WorkspaceTree({ onOpenFolder }: { onOpenFolder: () => void }) {
         {/* 目录读取成功但里面既没有子目录也没有文档:明说一句,别让用户对着一片空白。
             (读取失败时 children 里没有这个 key,不显示提示,免得误报"空文件夹"。) */}
         {children.get(root)?.length === 0 && (
-          <Text fontSize="xs" color="fg.faint" px={3} py={2}>
+          <Text fontSize="xs" color="fg.subtle" px={3} py={2}>
             {t("shell.workspaceNoFiles")}
           </Text>
         )}

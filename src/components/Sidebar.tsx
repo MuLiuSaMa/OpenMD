@@ -30,10 +30,10 @@ function TabButton({
       py={1}
       borderRadius="sm"
       cursor="pointer"
-      color={active ? "fg" : "fg.muted"}
+      color="fg"
       bg={active ? "bg.subtle" : "transparent"}
       fontWeight={active ? "medium" : "normal"}
-      _hover={{ color: "fg", bg: "bg.subtle" }}
+      _hover={{ bg: "bg.subtle" }}
       onClick={onClick}
     >
       {icon}
@@ -63,15 +63,13 @@ export function Sidebar({ open }: { open: boolean }) {
   ];
 
   return (
-    // 常驻挂载,通过宽度过渡实现展开/收起动画;收起时隐藏右边框。
+    // 常驻挂载,通过宽度过渡实现展开/收起动画。
     <Box
       w={open ? "250px" : "0px"}
       flexShrink={0}
-      borderRightWidth="1px"
-      borderColor={open ? "border.subtle" : "transparent"}
       position="relative"
       overflow="hidden"
-      transition="width 0.25s ease, border-color 0.25s ease"
+      transition="width 0.25s ease"
       _motionReduce={{ transition: "none" }}
     >
       <Flex w="250px" h="100%" direction="column">

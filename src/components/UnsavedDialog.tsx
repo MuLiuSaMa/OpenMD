@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button, Dialog, HStack, Portal, Text, VStack } from "@chakra-ui/react";
 import { useConfirm } from "../stores/confirm";
+import { useOverlayBlur } from "../lib/overlayBlur";
 
 /**
  * 「未保存修改」确认弹窗:关闭有改动未保存的标签页时由 tabs store 发起,
@@ -12,6 +13,8 @@ export function UnsavedDialog() {
   const open = useConfirm((s) => s.open);
   const fileName = useConfirm((s) => s.fileName);
   const settle = useConfirm((s) => s.settleUnsaved);
+  // 打开时模糊整个 App 内容(见 lib/overlayBlur.ts)。
+  useOverlayBlur(open);
 
   return (
     <Dialog.Root
@@ -23,7 +26,7 @@ export function UnsavedDialog() {
       size="sm"
     >
       <Portal>
-        <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px)" />
+        <Dialog.Backdrop bg="blackAlpha.300" />
         <Dialog.Positioner>
           <Dialog.Content
             borderRadius="12px"

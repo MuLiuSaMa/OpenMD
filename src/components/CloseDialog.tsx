@@ -12,6 +12,7 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { Minimize2, LogOut } from "lucide-react";
 import { useSettings } from "../stores/settings";
+import { useOverlayBlur } from "../lib/overlayBlur";
 
 /** True when running inside the Tauri webview (false in a plain browser). */
 const IN_TAURI = "__TAURI_INTERNALS__" in window;
@@ -29,6 +30,8 @@ export function CloseDialog({ open, onClose }: CloseDialogProps) {
   const { t } = useTranslation();
   const [remember, setRemember] = useState(false);
   const setCloseAction = useSettings((s) => s.setCloseAction);
+  // 打开时模糊整个 App 内容(见 lib/overlayBlur.ts)。
+  useOverlayBlur(open);
 
   // 每次打开重置勾选,避免上次的选择被静默带入
   useEffect(() => {
@@ -58,7 +61,7 @@ export function CloseDialog({ open, onClose }: CloseDialogProps) {
       size="sm"
     >
       <Portal>
-        <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px)" />
+        <Dialog.Backdrop bg="blackAlpha.300" />
         <Dialog.Positioner>
           <Dialog.Content
             borderRadius="12px"

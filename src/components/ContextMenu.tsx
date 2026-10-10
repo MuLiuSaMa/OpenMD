@@ -125,7 +125,7 @@ export function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
               fontSize="xs"
               textAlign="start"
               w="100%"
-              color={entry.disabled ? "fg.faint" : "fg"}
+              color={entry.disabled ? "fg.subtle" : "fg"}
               cursor={entry.disabled ? "default" : "pointer"}
               userSelect="none"
               _hover={entry.disabled ? {} : { bg: "bg.subtle" }}
@@ -140,7 +140,7 @@ export function ContextMenu({ x, y, entries, onClose }: ContextMenuProps) {
                 {entry.label}
               </Box>
               {entry.hint && (
-                <Box as="span" ms="auto" fontSize="2xs" color="fg.faint">
+                <Box as="span" ms="auto" fontSize="2xs" color="fg.subtle">
                   {entry.hint}
                 </Box>
               )}

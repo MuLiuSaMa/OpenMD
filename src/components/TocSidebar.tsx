@@ -32,12 +32,12 @@ export function TocPanel() {
             pr={2}
             borderRadius="sm"
             cursor="pointer"
-            color={active ? "colorPalette.solid" : "fg.muted"}
+            color={active ? "colorPalette.solid" : "fg"}
             bg={active ? "colorPalette.subtle" : "transparent"}
             textOverflow="ellipsis"
             overflow="hidden"
             whiteSpace="nowrap"
-            _hover={{ color: "fg", bg: "bg.subtle" }}
+            _hover={{ bg: "bg.subtle" }}
             onClick={() => {
               setActiveHeading(entry.id);
               document.getElementById(entry.id)?.scrollIntoView({
@@ -70,7 +70,7 @@ export function TocPanel() {
         aria-label={t("shell.toc")}
       >
         {entries.length === 0 ? (
-          <Text fontSize="sm" color="fg.faint" px={2}>
+          <Text fontSize="sm" color="fg.subtle" px={2}>
             {t("shell.noHeadings")}
           </Text>
         ) : (

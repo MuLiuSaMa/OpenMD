@@ -46,7 +46,7 @@ export function StatusBar() {
       )}
       {/* 商店版不展示作者文案;出错提示保留 */}
       {(!IS_STORE_BUILD || tab.error) && (
-        <Text ms="auto" color="fg.faint">
+        <Text ms="auto" color="fg.subtle">
           {tab.error ? t("shell.openFailed") : t("shell.author")}
         </Text>
       )}

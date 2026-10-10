@@ -10,6 +10,7 @@ import "katex/dist/katex.min.css";
 import "markdown-it-github-alerts/styles/github-base.css";
 import "markdown-it-github-alerts/styles/github-colors-dark-class.css";
 import "./theme/md.css";
+import "./theme/shell.css";
 
 // Chakra v3 delegates color mode to next-themes: `attribute="class"` puts the
 // `dark` class on <html>, which both Chakra's _dark condition and md.css key on.

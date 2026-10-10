@@ -192,8 +192,6 @@ export function TabBar() {
       display="flex"
       alignItems="stretch"
       flexShrink={0}
-      borderBottomWidth="1px"
-      borderBottomColor="border.subtle"
     >
       <HStack
         gap={0}
@@ -226,7 +224,7 @@ export function TabBar() {
               }}
               px={3}
               py={1.5}
-              borderTopRadius="md"
+              borderRadius="md"
               fontSize="xs"
               display="flex"
               alignItems="center"
@@ -235,10 +233,8 @@ export function TabBar() {
               flexShrink={0}
               cursor="pointer"
               userSelect="none"
-              bg={active ? "bg.canvas" : "transparent"}
-              color={active ? "fg" : "fg.muted"}
-              borderBottomWidth="1px"
-              borderBottomColor={active ? "transparent" : "border.subtle"}
+              bg={active ? "bg.subtle" : "transparent"}
+              color="fg"
               title={tab.path ?? tabName(tab)}
             >
               {tab.diskChanged && (

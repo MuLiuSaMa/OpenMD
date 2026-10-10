@@ -9,7 +9,6 @@ import {
   Input,
   Menu,
   Portal,
-  Separator,
   Slider,
   Text,
 } from "@chakra-ui/react";
@@ -224,8 +223,6 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
       // 这里留出空档避免压住 Logo;其他平台保持原来的 3px。
       paddingLeft={IS_MACOS ? "78px" : "3px"}
       flexShrink={0}
-      borderBottomWidth="1px"
-      borderColor="border.subtle"
       userSelect="none"
       display="flex"
       alignItems="center"
@@ -282,7 +279,6 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
                 <Save size={15} />
                 {t("viewer.toolbar.save")}
               </Button>
-              <Separator orientation="vertical" h="20px" />
             </>
           )}
           <Menu.Root
@@ -354,8 +350,6 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             </Portal>
           </Menu.Root>
 
-          <Separator orientation="vertical" h="20px" />
-
           <IconButton
             aria-label={t("shell.decreaseFontSize")}
             title={t("shell.decreaseFontSizeShortcut")}
@@ -405,8 +399,6 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           >
             <Plus size={15} />
           </IconButton>
-
-          <Separator orientation="vertical" h="20px" />
 
           <Button
             aria-label={t("shell.tocBar")}
