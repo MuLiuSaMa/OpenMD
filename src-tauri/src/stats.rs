@@ -11,7 +11,7 @@ async fn send_statistics(version: String, os: String) {
         .unwrap_or_else(|_| reqwest::Client::new());
 
     match client
-        .post("https://mc.sjtu.cn/api-sjmcl/statistics")
+        .post("https://nexbox.cn/api/statistics")
         .json(&json!({
             "version": format!("OpenMD-{}", version),
             "os": os,
