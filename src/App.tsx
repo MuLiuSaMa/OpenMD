@@ -19,6 +19,7 @@ import { HOME_TAB_ID, useTabs } from "./stores/tabs";
 import { useSettings } from "./stores/settings";
 import { useWorkspace } from "./stores/workspace";
 import { useUpdate } from "./stores/update";
+import { useNotice } from "./stores/notice";
 import { IS_STORE_BUILD } from "./lib/build-flags";
 import { openStandaloneFiles } from "./lib/openStandaloneFiles";
 import { viewInAnimation } from "./theme/theme";
@@ -50,9 +51,10 @@ export default function App() {
   const { tocOpen, backgroundImage, editMode } = useSettings();
   const [openError, setOpenError] = useState<string | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-  // 托盘"检查更新"的结果提示(已是最新/失败);发现新版本时直接弹更新弹窗
-  const [notice, setNotice] = useState<string | null>(null);
-  const noticeTimerRef = useRef<number | null>(null);
+  // 托盘"检查更新"的结果提示(已是最新/失败);发现新版本时直接弹更新弹窗。
+  // 提示条状态放在 store 里,链接打开失败等场景也能复用同一条横幅。
+  const notice = useNotice((s) => s.text);
+  const showNotice = useNotice((s) => s.show);
   // 顶部提示条(编辑模式切换等):与底部 notice 相互独立,3 秒自动消失。
   // phase 用于播退场动画(closing → 动画播完再卸载)。
   const [topNotice, setTopNotice] = useState<{ text: string; phase: "open" | "closing" } | null>(null);
@@ -106,16 +108,6 @@ export default function App() {
       unlistenTrayCheck.then((fn) => fn()).catch(() => {});
     };
   }, []);
-
-  // 底部居中提示条(3 秒自动消失)
-  const showNotice = (text: string) => {
-    if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
-    setNotice(text);
-    noticeTimerRef.current = window.setTimeout(() => {
-      setNotice(null);
-      noticeTimerRef.current = null;
-    }, 3000);
-  };
 
   // 顶部提示条(3 秒自动消失):先播入场动画,收起时切 closing 播退场动画再卸载。
   const showTopNotice = (text: string) => {

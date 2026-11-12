@@ -55,6 +55,11 @@ image:
 asset:
   allow_failed: "アセットファイル %{path} を許可できません: %{error}"
 
+open:
+  outside: "文書と同じフォルダ内の対象のみ開けます: %{path}"
+  not_found: "リンク先が見つかりません: %{path}"
+  failed: "%{path} を開けません: %{error}"
+
 updater:
   download_failed: "ダウンロードに失敗しました (HTTP %{status})"
   cancelled: ダウンロードをキャンセルしました

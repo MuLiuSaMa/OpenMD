@@ -28,6 +28,14 @@ export async function allowAssets(documentPath: string, paths: string[]): Promis
   return invoke("allow_assets", { documentPath, paths });
 }
 
+/**
+ * 把文档里的本地链接交给系统打开:目录用资源管理器进入,文件用默认程序打开。
+ * 目标必须落在文档所在目录树内,否则 reject(错误信息可直接展示给用户)。
+ */
+export async function openInSystem(documentPath: string, target: string): Promise<void> {
+  return invoke("open_in_system", { documentPath, target });
+}
+
 export interface ImportedImage {
   /** Absolute path of the image on disk (for the asset protocol). */
   abs: string;

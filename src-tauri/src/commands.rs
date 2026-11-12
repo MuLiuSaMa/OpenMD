@@ -712,6 +712,93 @@ pub fn allow_assets(
     Ok(rejected)
 }
 
+// ---- 在系统里打开本地链接(文件夹 → 资源管理器,文件 → 默认程序) ----
+
+/// 把文档里的本地链接交给系统打开:目录进入资源管理器,文件用它的默认程序。
+///
+/// 为什么不用 `@tauri-apps/plugin-opener` 的 `open_path`:那个命令要求在
+/// capability 里为 `opener:allow-open-path` 配一个静态 glob scope,而 scope
+/// 表达不了"只允许文档自己那棵树"。把 scope 写成 `**` 就等于让任意一份 md
+/// 用 `[点我](../../evil.exe)` 把一次点击变成任意程序启动。
+///
+/// 这里沿用 [`allow_assets`] 的同一条边界:目标必须真实存在,且落在文档所在
+/// 目录树之内(有 git 仓库时放宽到仓库根,规则见 [`asset_roots`]);越界或缺失
+/// 都返回错误给前端显示,而不是静默失败。
+#[tauri::command]
+pub fn open_in_system(document_path: String, target: String) -> Result<(), String> {
+    let doc = Path::new(&document_path);
+    let resolved = resolve_link_target(doc, &target)?;
+
+    let ceiling = home_dir().and_then(|h| fs::canonicalize(h).ok());
+    let roots = asset_roots(doc, ceiling.as_deref());
+    if !roots.iter().any(|root| resolved.starts_with(root)) {
+        return Err(t!("open.outside", path = target).into_owned());
+    }
+
+    reveal_or_open(&resolved)
+        .map_err(|e| t!("open.failed", path = target, error = e).into_owned())
+}
+
+/// 链接目标 → 规范化的绝对路径。相对路径按文档所在目录展开;不存在就报错,
+/// 免得把"打开失败"和"文件不在了"混成一条提示。
+fn resolve_link_target(doc: &Path, target: &str) -> Result<PathBuf, String> {
+    let raw = Path::new(target);
+    let absolute = if raw.is_absolute() {
+        raw.to_path_buf()
+    } else {
+        doc.parent().unwrap_or_else(|| Path::new(".")).join(raw)
+    };
+    fs::canonicalize(&absolute).map_err(|_| t!("open.not_found", path = target).into_owned())
+}
+
+#[cfg(windows)]
+fn reveal_or_open(path: &Path) -> Result<(), String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+
+    fn wide(s: &std::ffi::OsStr) -> Vec<u16> {
+        s.encode_wide().chain(std::iter::once(0)).collect()
+    }
+
+    let verb: Vec<u16> = "open\0".encode_utf16().collect();
+    let file = wide(path.as_os_str());
+    // SW_SHOWNORMAL:目录交给资源管理器打开,文件交给注册的关联程序。
+    let result = unsafe {
+        ShellExecuteW(
+            std::ptr::null_mut(),
+            verb.as_ptr(),
+            file.as_ptr(),
+            std::ptr::null(),
+            std::ptr::null(),
+            1,
+        )
+    } as isize;
+
+    // 文档约定:返回值 <= 32 即失败,见 ShellExecuteW 的 Win32 说明。
+    if result <= 32 {
+        return Err(format!("ShellExecuteW 返回 {result}"));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn reveal_or_open(path: &Path) -> Result<(), String> {
+    std::process::Command::new("open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(all(not(windows), not(target_os = "macos")))]
+fn reveal_or_open(path: &Path) -> Result<(), String> {
+    std::process::Command::new("xdg-open")
+        .arg(path)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// Split the requested asset paths into the canonical files that may be
 /// served and the requests that must be refused. Pure so it can be tested
 /// without an app handle.
@@ -1244,6 +1331,53 @@ mod asset_scope_tests {
         let (allowed, _) = partition_assets(&doc, &[inside]);
 
         assert_eq!(allowed.len(), 1);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn open_in_system_resolves_relative_targets_inside_the_document_tree() {
+        let dir = scratch("open-link");
+        let doc = dir.join("note.md");
+        fs::write(&doc, "x").unwrap();
+        let sub = dir.join("素材");
+        fs::create_dir_all(&sub).unwrap();
+
+        let got = super::resolve_link_target(&doc, "素材").unwrap();
+
+        assert_eq!(got, fs::canonicalize(&sub).unwrap());
+        assert!(
+            super::asset_roots(&doc, None).iter().any(|r| got.starts_with(r)),
+            "文档旁的子目录必须落在放行根内"
+        );
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn open_in_system_refuses_a_missing_target() {
+        let dir = scratch("open-link-missing");
+        let doc = dir.join("note.md");
+        fs::write(&doc, "x").unwrap();
+
+        assert!(super::resolve_link_target(&doc, "nope").is_err());
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn open_in_system_refuses_a_target_above_the_document_tree() {
+        let dir = scratch("open-link-outside");
+        let notes = dir.join("notes");
+        fs::create_dir_all(&notes).unwrap();
+        let doc = notes.join("note.md");
+        fs::write(&doc, "x").unwrap();
+        fs::create_dir_all(dir.join("secret")).unwrap();
+
+        let got = super::resolve_link_target(&doc, "../secret").unwrap();
+
+        assert!(
+            !super::asset_roots(&doc, None).iter().any(|r| got.starts_with(r)),
+            "../ 越出文档目录后不能落在任何放行根内"
+        );
         fs::remove_dir_all(&dir).ok();
     }
 
