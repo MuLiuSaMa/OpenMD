@@ -190,6 +190,49 @@ function addDirPlugin(mdInstance: MarkdownIt) {
   });
 }
 
+// A link destination written as a Windows absolute path (`C:\x`, `C:/x`,
+// `\\server\share\x`) cannot survive sanitizing as-is: `C:` looks exactly like an
+// unknown URI scheme to DOMPurify, which drops the href and leaves plain text.
+// Rewriting it to a `file:///` URL keeps the markdown source untouched (the file
+// still says what the author wrote) while giving the sanitizer a scheme it knows;
+// the click handler turns it back into a local path before opening.
+const WINDOWS_ABS_PATH = /^(?:[a-zA-Z]:[\\/]|\\\\)/;
+
+/** `C:\a\b` → `file:///C:/a/b`; `\\srv\share\x` → `file://srv/share/x`. */
+function windowsPathToFileUrl(path: string): string {
+  const unified = path.replace(/\\/g, "/");
+  const unc = unified.startsWith("//");
+  const body = unc ? unified.slice(2) : unified;
+  const encoded = body
+    .split("/")
+    // 盘符里的冒号必须留着,其余段整体百分号编码(空格、CJK、`#`、`?` 都要转义)
+    .map((seg, i) => (i === 0 && /^[a-zA-Z]:$/.test(seg) ? seg : encodeURIComponent(seg)))
+    .join("/");
+  return unc ? `file://${encoded}` : `file:///${encoded}`;
+}
+
+function addLocalLinkPlugin(mdInstance: MarkdownIt) {
+  mdInstance.core.ruler.push("local-link", (state) => {
+    for (const token of state.tokens) {
+      if (token.type !== "inline" || !token.children) continue;
+      for (const child of token.children) {
+        if (child.type !== "link_open") continue;
+        const href = child.attrGet("href");
+        if (!href) continue;
+        // markdown-it 已对目标做过 URL 编码,反斜杠可能变成 %5C,先还原再判断。
+        let decoded = href;
+        try {
+          decoded = decodeURIComponent(href);
+        } catch {
+          /* 保持原样 */
+        }
+        if (!WINDOWS_ABS_PATH.test(decoded)) continue;
+        child.attrSet("href", windowsPathToFileUrl(decoded));
+      }
+    }
+  });
+}
+
 function makeMarkdownIt(): MarkdownIt {
   const instance = new MarkdownIt({
     // Raw HTML (badges, <kbd>, <details>, <div dir>…) is rendered. Everything
@@ -278,6 +321,7 @@ function makeMarkdownIt(): MarkdownIt {
   });
   addSourceLinePlugin(instance);
   addDirPlugin(instance);
+  addLocalLinkPlugin(instance);
   return instance;
 }
 

@@ -55,6 +55,11 @@ image:
 asset:
   allow_failed: "Failed to allow asset %{path}: %{error}"
 
+open:
+  outside: "Only targets inside the document's folder can be opened: %{path}"
+  not_found: "Link target not found: %{path}"
+  failed: "Could not open %{path}: %{error}"
+
 updater:
   download_failed: "Download failed (HTTP %{status})"
   cancelled: Download cancelled

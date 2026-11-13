@@ -55,6 +55,11 @@ image:
 asset:
   allow_failed: "无法放行资源文件 %{path}: %{error}"
 
+open:
+  outside: "只能打开文档所在目录内的目标: %{path}"
+  not_found: "链接目标不存在: %{path}"
+  failed: "无法打开 %{path}: %{error}"
+
 updater:
   download_failed: "下载失败 (HTTP %{status})"
   cancelled: 下载已取消

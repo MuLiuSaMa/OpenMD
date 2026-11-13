@@ -19,7 +19,7 @@ import i18n from "i18next";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "next-themes";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { openUrl, openPath } from "@tauri-apps/plugin-opener";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   dirnameOf,
   frontmatterLineOffset,
@@ -42,11 +42,12 @@ import {
   allowAssets,
   importImage,
   openImageDialog,
-  pathExists,
+  openInSystem,
   resolveWikiTarget,
 } from "../tauri/api";
 import { useTabs, type Tab } from "../stores/tabs";
 import { useSettings, type ViewMode } from "../stores/settings";
+import { useNotice } from "../stores/notice";
 import { useWorkspace } from "../stores/workspace";
 import { withViewTransition } from "../utils/viewTransition";
 import { ContextMenu, type MenuEntry } from "./ContextMenu";
@@ -191,6 +192,27 @@ function isUrlHref(href: string): boolean {
   return (/^(?!file:)[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith("//"));
 }
 
+/**
+ * `file:///F:/a/b` → `F:\a\b`(UNC 用 `\\host\share\...`);非 file 协议返回 null。
+ *
+ * 渲染层会把盘符绝对路径改写成 `file://` URL,否则 DOMPurify 会把 `F:` 当成
+ * 未知协议把 href 删掉。到了点击这一层再换回本地路径,交给后端校验。
+ */
+function fileUrlToPath(href: string): string | null {
+  if (!/^file:/i.test(href)) return null;
+  try {
+    const url = new URL(href);
+    const path = decodeURIComponent(url.pathname);
+    // /F:/a → F:/a(Windows 的 pathname 前面多一个斜杠)
+    const trimmed = /^\/[a-zA-Z]:/.test(path) ? path.slice(1) : path;
+    if (/^[a-zA-Z]:/.test(trimmed)) return trimmed.replace(/\//g, "\\");
+    if (url.host) return `\\\\${url.host}${trimmed.replace(/\//g, "\\")}`;
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
 /** 代码视图目录用的源码标题(ATX 形式,跳过围栏代码块内的假标题)。 */
 interface SourceHeading {
   line: number;
@@ -270,6 +292,38 @@ export function MarkdownView({ tab }: { tab: Tab }) {
   const [presenting, setPresenting] = useState(false);
 
   const baseDir = tab.path ? dirnameOf(tab.path) : undefined;
+
+  /**
+   * 统一的链接动作:外部 URL 交系统浏览器;本地目标(相对路径、`file://`、
+   * 盘符绝对路径)交后端 open_in_system 校验后打开——目录进资源管理器,
+   * 文件用它的默认程序。目标不存在或越出文档目录时会弹提示,不再静默失败。
+   */
+  const openHref = useCallback(
+    async (href: string) => {
+      const docPath = tab.path;
+      if (!docPath || isUrlHref(href)) {
+        try {
+          await openUrl(href);
+        } catch {
+          window.open(href, "_blank");
+        }
+        return;
+      }
+      const resolved = fileUrlToPath(href) ?? resolveLocalPath(href, dirnameOf(docPath));
+      if (MD_EXTENSIONS.test(resolved)) {
+        void useTabs.getState().openPath(resolved);
+        return;
+      }
+      try {
+        await openInSystem(docPath, resolved);
+      } catch (err) {
+        // 目标不存在、越出文档目录、系统拒绝打开——统一抛出后端给的文案。
+        console.warn("打开链接失败:", resolved, err);
+        useNotice.getState().show(String(err));
+      }
+    },
+    [tab.path],
+  );
   // 预览的渲染源。编辑期间预览打字只更新 store 里的 draft,不跟进
   // previewSource(deps 故意不含 draft),否则 React 会重设 innerHTML、光标丢失;
   // 它只在边界时刻同步:挂载、外部重载、视图切换、编辑开关切换。
@@ -463,28 +517,11 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       if (link.classList.contains("wiki-link")) return;
       const href = link.getAttribute("href") ?? "";
       if (!href || href.startsWith("#")) return;
-      link.addEventListener("click", async (e) => {
+      link.addEventListener("click", (e) => {
         e.preventDefault();
         // 编辑模式下点击是为了放置光标,不打开链接。
         if (editMode) return;
-        if (!tab.path || isUrlHref(href)) {
-          try {
-            await openUrl(href);
-          } catch {
-            window.open(href, "_blank");
-          }
-          return;
-        }
-        const resolved = resolveLocalPath(href, dirnameOf(tab.path as string));
-        if (MD_EXTENSIONS.test(resolved)) {
-          void useTabs.getState().openPath(resolved);
-          return;
-        }
-        if (await pathExists(resolved).catch(() => false)) {
-          await openPath(resolved).catch(() => {});
-        } else {
-          console.warn("链接目标不存在:", resolved);
-        }
+        void openHref(href);
       });
     });
 
@@ -493,7 +530,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       // 卸载(切走/回首页)时清空目录;重挂载会立即重新提取
       setEntries([]);
     };
-  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, isDark, assetPaths, setEntries, setActive]);
+  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, isDark, assetPaths, setEntries, setActive, openHref]);
 
   // 预览编辑:contentEditable 的变更 → 段落级映射回源码草稿。预览 DOM 不重渲染,
   // 光标不丢;400ms 去抖把同一块的多条变更合并成一次替换。行号在 patch 间会漂移,
@@ -941,7 +978,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
             type: "item",
             label: t("viewer.menu.openLink"),
             icon: <ExternalLink size={14} />,
-            onClick: () => void openUrl(href),
+            onClick: () => void openHref(href),
           });
         }
         entries.push(
@@ -1087,7 +1124,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       return entries;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 菜单条目依赖众多动作回调,均为稳定 useCallback
-    [editing, viewMode, menuUndo, menuRedo, insertImageAtCaret, replaceImage, resizeImage, textareaCopy, textareaPaste, applySelectionFontSize, alignSelectedBlocks, restoreMenuSelection],
+    [editing, viewMode, menuUndo, menuRedo, insertImageAtCaret, replaceImage, resizeImage, textareaCopy, textareaPaste, applySelectionFontSize, alignSelectedBlocks, restoreMenuSelection, openHref],
   );
 
   const pasteIntoPreview = useCallback(async () => {

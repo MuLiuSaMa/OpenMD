@@ -197,6 +197,7 @@ pub fn run() {
             commands::resolve_wiki_target,
             commands::import_image,
             commands::allow_assets,
+            commands::open_in_system,
             editors::detect_editors,
             editors::open_file_with,
             watcher::watch_file,
