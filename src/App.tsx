@@ -52,9 +52,12 @@ export default function App() {
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const refreshPath = useTabs((s) => s.refreshPath);
+  const updateDraft = useTabs((s) => s.updateDraft);
   const { tocOpen, setTocOpen, backgroundImage } = useSettings();
   const { splitOpen, diffOpen, splitTabId, setSplitOpen, setDiffOpen, setSplitTabId } = useSplit();
-  const [rightViewMode, setRightViewMode] = useState<ViewMode>("code");
+  const [leftViewMode, setLeftViewMode] = useState<ViewMode>(() => useSettings.getState().viewMode);
+  const [rightViewMode, setRightViewMode] = useState<ViewMode>("preview");
+  const [leftSplitTabId, setLeftSplitTabId] = useState<string | null>(null);
   const windowWidth = useWindowWidth();
   const isNarrow = windowWidth < 860;
   const [openError, setOpenError] = useState<string | null>(null);
@@ -77,10 +80,11 @@ export default function App() {
 
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
   const docTabs = tabs.filter((t) => t.path !== null);
+  const leftTab = docTabs.find((t) => t.id === leftSplitTabId) ?? activeTab;
   const rightTab =
     docTabs.find((t) => t.id === splitTabId) ??
-    docTabs.find((t) => t.id !== activeTab?.id) ??
-    activeTab;
+    docTabs.find((t) => t.id !== leftTab?.id) ??
+    leftTab;
 
   // 启动自动检查更新(GitCode release,带令牌认证);发现新版本时右下角弹更新弹窗。
   // 商店版(MSIX)更新由商店接管,不做任何应用内更新。
@@ -322,7 +326,7 @@ export default function App() {
               />
             )}
             {activeTab && !splitOpen && <MarkdownView key={activeTab.id} tab={activeTab} />}
-            {activeTab && splitOpen && rightTab && diffOpen && (
+            {activeTab && splitOpen && leftTab && rightTab && diffOpen && (
               <Flex direction="column" flex={1} minW={0} minH={0}>
                 {docTabs.length > 1 && (
                   <HStack
@@ -335,7 +339,26 @@ export default function App() {
                     bg="bg.subtle"
                     fontSize="xs"
                   >
-                    <Text color="fg.muted">对比目标:</Text>
+                    <Text color="fg.muted">左侧:</Text>
+                    <select
+                      value={leftTab.id}
+                      onChange={(e) => setLeftSplitTabId(e.target.value)}
+                      style={{
+                        background: "transparent",
+                        color: "inherit",
+                        fontSize: "12px",
+                        border: "1px solid var(--chakra-colors-border-subtle)",
+                        borderRadius: "4px",
+                        padding: "1px 6px",
+                      }}
+                    >
+                      {docTabs.map((dt) => (
+                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
+                          {dt.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Text color="fg.muted">右侧(可编辑):</Text>
                     <select
                       value={rightTab.id}
                       onChange={(e) => setSplitTabId(e.target.value)}
@@ -350,7 +373,7 @@ export default function App() {
                     >
                       {docTabs.map((dt) => (
                         <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
-                          {dt.id === activeTab.id ? `${dt.name} (已保存 vs 当前编辑)` : dt.name}
+                          {dt.id === leftTab.id ? `${dt.name} (已保存 vs 当前编辑)` : dt.name}
                         </option>
                       ))}
                     </select>
@@ -358,34 +381,71 @@ export default function App() {
                 )}
                 <DiffView
                   leftTitle={
-                    rightTab.id === activeTab.id
-                      ? `${activeTab.name} (已保存)`
-                      : activeTab.name
+                    rightTab.id === leftTab.id
+                      ? `${leftTab.name} (已保存)`
+                      : leftTab.name
                   }
                   leftText={
-                    rightTab.id === activeTab.id
-                      ? activeTab.content
-                      : (activeTab.draft ?? activeTab.content)
+                    rightTab.id === leftTab.id
+                      ? leftTab.content
+                      : (leftTab.draft ?? leftTab.content)
                   }
                   rightTitle={
-                    rightTab.id === activeTab.id
-                      ? `${activeTab.name} (当前编辑)`
+                    rightTab.id === leftTab.id
+                      ? `${rightTab.name} (当前编辑)`
                       : rightTab.name
                   }
                   rightText={rightTab.draft ?? rightTab.content}
+                  onRightChange={(next) => updateDraft(rightTab.id, next)}
                   onCloseDiff={() => setDiffOpen(false)}
                 />
               </Flex>
             )}
-            {activeTab && splitOpen && rightTab && !diffOpen && (
+            {activeTab && splitOpen && leftTab && rightTab && !diffOpen && (
               <Flex
                 flex={1}
                 minW={0}
                 minH={0}
                 direction={windowWidth < 600 ? "column" : "row"}
               >
-                <Flex flex={1} minW={0} minH={0}>
-                  <MarkdownView key={activeTab.id} tab={activeTab} />
+                <Flex direction="column" flex={1} minW={0} minH={0}>
+                  <HStack
+                    h="30px"
+                    px={2}
+                    gap={1.5}
+                    flexShrink={0}
+                    borderBottomWidth="1px"
+                    borderColor="border.subtle"
+                    bg="bg.subtle"
+                    fontSize="xs"
+                  >
+                    <select
+                      aria-label="左侧分屏文档"
+                      value={leftTab.id}
+                      onChange={(e) => setLeftSplitTabId(e.target.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        background: "transparent",
+                        color: "inherit",
+                        fontSize: "12px",
+                        border: "none",
+                        outline: "none",
+                      }}
+                    >
+                      {docTabs.map((dt) => (
+                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
+                          {dt.name}
+                        </option>
+                      ))}
+                    </select>
+                  </HStack>
+                  <MarkdownView
+                    key={`split-left-${leftTab.id}`}
+                    tab={leftTab}
+                    viewModeOverride={leftViewMode}
+                    onViewModeChange={setLeftViewMode}
+                  />
                 </Flex>
                 <Box
                   w={windowWidth < 600 ? "100%" : "1px"}
@@ -405,7 +465,7 @@ export default function App() {
                     fontSize="xs"
                   >
                     <select
-                      aria-label="分屏文档"
+                      aria-label="右侧分屏文档"
                       value={rightTab.id}
                       onChange={(e) => setSplitTabId(e.target.value)}
                       style={{
@@ -446,9 +506,15 @@ export default function App() {
                     </Button>
                   </HStack>
                   <MarkdownView
-                    key={`split-${rightTab.id}`}
+                    key={`split-right-${rightTab.id}`}
                     tab={rightTab}
-                    viewModeOverride={rightViewMode}
+                    viewModeOverride={
+                      rightTab.id === leftTab.id && rightViewMode === leftViewMode
+                        ? leftViewMode === "preview"
+                          ? "code"
+                          : "preview"
+                        : rightViewMode
+                    }
                     onViewModeChange={setRightViewMode}
                   />
                 </Flex>

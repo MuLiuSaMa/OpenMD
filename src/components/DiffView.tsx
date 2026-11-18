@@ -1,31 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { X } from "lucide-react";
 import { useTheme } from "next-themes";
-import { computeSideBySideDiff, type DiffLineKind } from "../renderer/lineDiff";
+import { computeSideLineDiff } from "../renderer/lineDiff";
 
-function cellBg(kind: DiffLineKind, isDark: boolean): string {
+function rowBg(kind: "equal" | "add" | "remove", isDark: boolean): string {
   if (kind === "add") {
-    return isDark ? "rgba(46, 160, 67, 0.18)" : "rgba(46, 160, 67, 0.14)";
+    return isDark ? "rgba(46, 160, 67, 0.2)" : "rgba(46, 160, 67, 0.14)";
   }
   if (kind === "remove") {
-    return isDark ? "rgba(248, 81, 73, 0.18)" : "rgba(248, 81, 73, 0.13)";
+    return isDark ? "rgba(248, 81, 73, 0.2)" : "rgba(248, 81, 73, 0.13)";
   }
-  if (kind === "empty") {
-    return isDark ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.025)";
-  }
-  return "transparent";
-}
-
-function markerChar(kind: DiffLineKind): string {
-  if (kind === "add") return "+";
-  if (kind === "remove") return "-";
-  return " ";
-}
-
-function markerColor(kind: DiffLineKind, isDark: boolean): string {
-  if (kind === "add") return isDark ? "#3fb950" : "#1a7f37";
-  if (kind === "remove") return isDark ? "#f85149" : "#cf222e";
   return "transparent";
 }
 
@@ -34,24 +19,41 @@ export function DiffView({
   leftText,
   rightTitle,
   rightText,
+  onRightChange,
   onCloseDiff,
 }: {
   leftTitle: string;
   leftText: string;
   rightTitle: string;
   rightText: string;
+  onRightChange?: (next: string) => void;
   onCloseDiff?: () => void;
 }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
+  const leftScrollRef = useRef<HTMLDivElement>(null);
+  const rightScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef(false);
 
-  const { rows, added, removed } = useMemo(
-    () => computeSideBySideDiff(leftText, rightText),
+  const { leftLines, rightLines, added, removed } = useMemo(
+    () => computeSideLineDiff(leftText, rightText),
     [leftText, rightText],
   );
 
   const fontFamily =
     '"JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace';
+
+  const syncScroll = (from: "left" | "right") => {
+    if (syncingRef.current) return;
+    const src = from === "left" ? leftScrollRef.current : rightScrollRef.current;
+    const dst = from === "left" ? rightScrollRef.current : leftScrollRef.current;
+    if (!src || !dst) return;
+    syncingRef.current = true;
+    dst.scrollTop = src.scrollTop;
+    requestAnimationFrame(() => {
+      syncingRef.current = false;
+    });
+  };
 
   return (
     <Flex direction="column" flex={1} minW={0} minH={0} bg="bg.canvas">
@@ -77,7 +79,7 @@ export function DiffView({
           </Text>
         </HStack>
         <Text fontWeight="medium" truncate flex={1} minW={0} textAlign="right" title={rightTitle}>
-          {rightTitle}
+          {rightTitle} {onRightChange ? "(可编辑)" : ""}
         </Text>
         {onCloseDiff && (
           <Button
@@ -92,100 +94,132 @@ export function DiffView({
         )}
       </HStack>
 
-      <Box
-        flex={1}
-        minH={0}
-        overflow="auto"
-        fontSize="13px"
-        lineHeight="1.6"
-        style={{ fontFamily }}
-      >
-        {rows.length === 0 ? (
-          <Flex h="100%" align="center" justify="center" color="fg.muted" fontSize="sm">
-            无内容差异
-          </Flex>
-        ) : (
-          <Box minW="fit-content">
-            {rows.map((r, idx) => (
-              <Flex
-                key={idx}
-                borderBottomWidth="1px"
-                borderColor={isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}
-              >
-                {/* 左侧 */}
-                <Flex
-                  flex={1}
-                  minW="240px"
-                  bg={cellBg(r.leftKind, isDark)}
-                  borderRightWidth="1px"
-                  borderColor="border.subtle"
+      <Flex flex={1} minW={0} minH={0}>
+        {/* 左侧只读对照区 */}
+        <Box
+          ref={leftScrollRef}
+          flex={1}
+          minW={0}
+          minH={0}
+          overflowY="auto"
+          borderRightWidth="1px"
+          borderColor="border.subtle"
+          fontSize="13px"
+          lineHeight="1.65"
+          style={{ fontFamily }}
+          onScroll={() => syncScroll("left")}
+        >
+          <Box py={3}>
+            {leftLines.map((l) => (
+              <Flex key={l.line} bg={rowBg(l.kind, isDark)} px={2}>
+                <Box
+                  w="38px"
+                  flexShrink={0}
+                  pr={2}
+                  textAlign="right"
+                  color="fg.subtle"
+                  userSelect="none"
+                  fontSize="11px"
                 >
-                  <Box
-                    w="44px"
-                    flexShrink={0}
-                    px={2}
-                    textAlign="right"
-                    color="fg.subtle"
-                    userSelect="none"
-                    fontSize="11px"
-                  >
-                    {r.leftLine ?? ""}
-                  </Box>
-                  <Box
-                    w="16px"
-                    flexShrink={0}
-                    textAlign="center"
-                    userSelect="none"
-                    color={markerColor(r.leftKind, isDark)}
-                  >
-                    {markerChar(r.leftKind)}
-                  </Box>
-                  <Box
-                    flex={1}
-                    pr={3}
-                    whiteSpace="pre-wrap"
-                    wordBreak="break-word"
-                  >
-                    {r.leftText || " "}
-                  </Box>
-                </Flex>
-
-                {/* 右侧 */}
-                <Flex flex={1} minW="240px" bg={cellBg(r.rightKind, isDark)}>
-                  <Box
-                    w="44px"
-                    flexShrink={0}
-                    px={2}
-                    textAlign="right"
-                    color="fg.subtle"
-                    userSelect="none"
-                    fontSize="11px"
-                  >
-                    {r.rightLine ?? ""}
-                  </Box>
-                  <Box
-                    w="16px"
-                    flexShrink={0}
-                    textAlign="center"
-                    userSelect="none"
-                    color={markerColor(r.rightKind, isDark)}
-                  >
-                    {markerChar(r.rightKind)}
-                  </Box>
-                  <Box
-                    flex={1}
-                    pr={3}
-                    whiteSpace="pre-wrap"
-                    wordBreak="break-word"
-                  >
-                    {r.rightText || " "}
-                  </Box>
-                </Flex>
+                  {l.line}
+                </Box>
+                <Box
+                  w="14px"
+                  flexShrink={0}
+                  textAlign="center"
+                  userSelect="none"
+                  color={l.kind === "remove" ? (isDark ? "#f85149" : "#cf222e") : "transparent"}
+                >
+                  {l.kind === "remove" ? "-" : " "}
+                </Box>
+                <Box flex={1} minW={0} whiteSpace="pre-wrap" wordBreak="break-word">
+                  {l.text || "\u00A0"}
+                </Box>
               </Flex>
             ))}
           </Box>
-        )}
-      </Box>
+        </Box>
+
+        {/* 右侧可编辑对照区：高亮底层与透明 textarea 网格叠放 */}
+        <Box
+          ref={rightScrollRef}
+          flex={1}
+          minW={0}
+          minH={0}
+          overflowY="auto"
+          fontSize="13px"
+          lineHeight="1.65"
+          style={{ fontFamily }}
+          onScroll={() => syncScroll("right")}
+        >
+          <Box display="grid" minH="100%">
+            {/* 底层：行号、+ 标记与绿色高亮背景 */}
+            <Box gridArea="1 / 1" py={3} pointerEvents="none">
+              {rightLines.map((l) => (
+                <Flex key={l.line} bg={rowBg(l.kind, isDark)} px={2}>
+                  <Box
+                    w="38px"
+                    flexShrink={0}
+                    pr={2}
+                    textAlign="right"
+                    color="fg.subtle"
+                    userSelect="none"
+                    fontSize="11px"
+                  >
+                    {l.line}
+                  </Box>
+                  <Box
+                    w="14px"
+                    flexShrink={0}
+                    textAlign="center"
+                    userSelect="none"
+                    color={l.kind === "add" ? (isDark ? "#3fb950" : "#1a7f37") : "transparent"}
+                  >
+                    {l.kind === "add" ? "+" : " "}
+                  </Box>
+                  <Box
+                    flex={1}
+                    minW={0}
+                    whiteSpace="pre-wrap"
+                    wordBreak="break-word"
+                    color="fg"
+                  >
+                    {l.text || "\u00A0"}
+                  </Box>
+                </Flex>
+              ))}
+            </Box>
+
+            {/* 顶层：可编辑透明 textarea，左偏移 60px 对齐正文列（px:8px + w:38px + w:14px） */}
+            {onRightChange && (
+              <textarea
+                aria-label="Diff 右侧编辑区"
+                value={rightText}
+                spellCheck={false}
+                onChange={(e) => onRightChange(e.target.value)}
+                style={{
+                  gridArea: "1 / 1",
+                  margin: 0,
+                  padding: "12px 8px 12px 60px",
+                  border: 0,
+                  background: "transparent",
+                  color: "transparent",
+                  caretColor: isDark ? "#e6e6e6" : "#1f2328",
+                  fontFamily,
+                  fontSize: "13px",
+                  lineHeight: "1.65",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  overflow: "hidden",
+                  resize: "none",
+                  outline: "none",
+                  zIndex: 1,
+                }}
+              />
+            )}
+          </Box>
+        </Box>
+      </Flex>
     </Flex>
   );
 }

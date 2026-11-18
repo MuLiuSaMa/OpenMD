@@ -151,3 +151,38 @@ export function computeSideBySideDiff(leftInput: string, rightInput: string): Di
 
   return { rows, added, removed };
 }
+
+export interface SideLineDiff {
+  leftLines: { line: number; text: string; kind: "equal" | "remove" }[];
+  rightLines: { line: number; text: string; kind: "equal" | "add" }[];
+  added: number;
+  removed: number;
+}
+
+/**
+ * 为左右可编辑对照视图计算逐行状态（左侧保留原始行号与删除标记，右侧保留目标行号与新增/修改标记）。
+ */
+export function computeSideLineDiff(leftInput: string, rightInput: string): SideLineDiff {
+  const { rows, added, removed } = computeSideBySideDiff(leftInput, rightInput);
+  const leftLines: SideLineDiff["leftLines"] = [];
+  const rightLines: SideLineDiff["rightLines"] = [];
+
+  for (const r of rows) {
+    if (r.leftLine !== null) {
+      leftLines.push({
+        line: r.leftLine,
+        text: r.leftText,
+        kind: r.leftKind === "remove" ? "remove" : "equal",
+      });
+    }
+    if (r.rightLine !== null) {
+      rightLines.push({
+        line: r.rightLine,
+        text: r.rightText,
+        kind: r.rightKind === "add" ? "add" : "equal",
+      });
+    }
+  }
+
+  return { leftLines, rightLines, added, removed };
+}
