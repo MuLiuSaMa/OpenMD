@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Alert, Box, Button, Flex, SegmentGroup } from "@chakra-ui/react";
 import {
+  Bold,
   Code2,
   ClipboardPaste,
   Copy,
@@ -8,11 +9,14 @@ import {
   ExternalLink,
   Image as ImageIcon,
   ImagePlus,
+  Italic,
   Link2,
   Play,
   Redo2,
+  RemoveFormatting,
   Replace,
   Scissors,
+  Strikethrough,
   Undo2,
 } from "lucide-react";
 import i18n from "i18next";
@@ -29,6 +33,11 @@ import {
 import { articleToMarkdown } from "../renderer/backconvert";
 import { renderRichBlocks } from "../renderer/richBlocks";
 import { applyLinePatches, collectPatches, patchFromBlock, shiftForLine } from "../renderer/previewEdit";
+import {
+  syncActiveSyntaxMarkers,
+  tryBlockInputRule,
+  tryInlineInputRule,
+} from "../renderer/liveWysiwyg";
 import {
   copyImage,
   isLocalImageSrc,
@@ -724,6 +733,93 @@ export function MarkdownView({ tab }: { tab: Tab }) {
     };
   }, [editing, viewMode, tab.id, tab.path, schedulePreviewPatch, flushPreviewEdits]);
 
+  // MarkText 式选区浮动格式栏 + 光标上下文语法显隐
+  const [selectionBar, setSelectionBar] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!editing || viewMode !== "preview") {
+      setSelectionBar(null);
+      return;
+    }
+    const onSelectionChange = () => {
+      const article = articleRef.current;
+      if (!article) return;
+      syncActiveSyntaxMarkers(article);
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setSelectionBar(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!article.contains(range.commonAncestorContainer) || !sel.toString().trim()) {
+        setSelectionBar(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        setSelectionBar(null);
+        return;
+      }
+      setSelectionBar({
+        x: Math.max(120, Math.min(window.innerWidth - 120, rect.left + rect.width / 2)),
+        y: Math.max(52, rect.top - 42),
+      });
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [editing, viewMode]);
+
+  const onArticleInput = useCallback(() => {
+    const article = articleRef.current;
+    if (!article || !editing || viewMode !== "preview") return;
+    const blockChanged = tryBlockInputRule(article, "input");
+    if (!blockChanged) {
+      tryInlineInputRule(article);
+    } else {
+      setEntries(extractToc(article));
+    }
+    syncActiveSyntaxMarkers(article);
+  }, [editing, viewMode, setEntries]);
+
+  const onArticleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      if (!editing || viewMode !== "preview") return;
+      const article = articleRef.current;
+      if (!article) return;
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        const converted = tryBlockInputRule(article, "enter");
+        if (converted) {
+          e.preventDefault();
+          syncActiveSyntaxMarkers(article);
+        }
+      }
+    },
+    [editing, viewMode],
+  );
+
+  const toggleInlineCodeSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const parentCode = (
+      range.commonAncestorContainer instanceof Element
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer.parentElement
+    )?.closest("code");
+    if (parentCode && !parentCode.closest("pre")) {
+      const text = document.createTextNode(parentCode.textContent ?? "");
+      parentCode.replaceWith(text);
+      return;
+    }
+    const code = document.createElement("code");
+    code.textContent = range.toString();
+    range.deleteContents();
+    range.insertNode(code);
+    sel.removeAllRanges();
+    const next = document.createRange();
+    next.selectNodeContents(code);
+    sel.addRange(next);
+  }, []);
+
   // ---- 内容区右键菜单(替代 WebView2 默认菜单)与图片编辑 ----
   const [menu, setMenu] = useState<{ x: number; y: number; target: Element } | null>(null);
   const [resizeHandle, setResizeHandle] = useState<{
@@ -1359,6 +1455,8 @@ export function MarkdownView({ tab }: { tab: Tab }) {
                 contentEditable={editing || undefined}
                 suppressContentEditableWarning
                 onMouseOver={onArticleMouseOver}
+                onInput={onArticleInput}
+                onKeyDown={onArticleKeyDown}
                 style={{
                   // 内容宽度随窗口自适应:宽屏按边距收窄阅读栏,窄屏自动收缩左右边距保证正文可读。
                   maxWidth: "100%",
@@ -1381,6 +1479,75 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           path={tab.path}
           onExit={() => setPresenting(false)}
         />
+      )}
+      {/* 选区浮动格式栏（MarkText 风格）：选中文本时浮现加粗/斜体/删除线/行内代码/清除格式 */}
+      {selectionBar && editing && viewMode === "preview" && (
+        <Flex
+          position="fixed"
+          zIndex={60}
+          style={{
+            left: `${selectionBar.x}px`,
+            top: `${selectionBar.y}px`,
+            transform: "translateX(-50%)",
+          }}
+          alignItems="center"
+          gap={0.5}
+          px={1.5}
+          py={1}
+          borderRadius="8px"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.panel"
+          boxShadow="md"
+          backdropFilter="blur(8px)"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title={t("viewer.menu.bold")}
+            onClick={() => document.execCommand("bold")}
+          >
+            <Bold size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Italic"
+            onClick={() => document.execCommand("italic")}
+          >
+            <Italic size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Strikethrough"
+            onClick={() => document.execCommand("strikeThrough")}
+          >
+            <Strikethrough size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Inline Code"
+            onClick={toggleInlineCodeSelection}
+          >
+            <Code2 size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Clear Format"
+            onClick={() => document.execCommand("removeFormat")}
+          >
+            <RemoveFormatting size={13} />
+          </Button>
+        </Flex>
       )}
       {/* 图片拖拽手柄:视口定位在图片右下角,拖动实时调宽。 */}
       {resizeHandle && editing && viewMode === "preview" && (

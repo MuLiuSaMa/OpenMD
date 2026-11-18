@@ -930,3 +930,73 @@
 .md-body[contenteditable="true"] {
   outline: none;
 }
+
+/* MarkText 式光标上下文语法显隐：光标进入时展开 Markdown 标记，离开时隐藏。 */
+.md-body h1[data-md-active="true"]::before,
+.md-body h2[data-md-active="true"]::before,
+.md-body h3[data-md-active="true"]::before,
+.md-body h4[data-md-active="true"]::before,
+.md-body h5[data-md-active="true"]::before,
+.md-body h6[data-md-active="true"]::before {
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", monospace;
+  font-weight: 400;
+  font-size: 0.72em;
+  color: #8c959f;
+  margin-right: 0.15em;
+  user-select: none;
+}
+.md-body h1[data-md-active="true"]::before { content: "# "; }
+.md-body h2[data-md-active="true"]::before { content: "## "; }
+.md-body h3[data-md-active="true"]::before { content: "### "; }
+.md-body h4[data-md-active="true"]::before { content: "#### "; }
+.md-body h5[data-md-active="true"]::before { content: "##### "; }
+.md-body h6[data-md-active="true"]::before { content: "###### "; }
+
+.md-body strong[data-md-inline-active="true"]::before,
+.md-body strong[data-md-inline-active="true"]::after,
+.md-body b[data-md-inline-active="true"]::before,
+.md-body b[data-md-inline-active="true"]::after {
+  content: "**";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-weight: 400;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body em[data-md-inline-active="true"]::before,
+.md-body em[data-md-inline-active="true"]::after,
+.md-body i[data-md-inline-active="true"]::before,
+.md-body i[data-md-inline-active="true"]::after {
+  content: "*";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-style: normal;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body del[data-md-inline-active="true"]::before,
+.md-body del[data-md-inline-active="true"]::after,
+.md-body s[data-md-inline-active="true"]::before,
+.md-body s[data-md-inline-active="true"]::after {
+  content: "~~";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  text-decoration: none;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body :not(pre) > code[data-md-inline-active="true"]::before,
+.md-body :not(pre) > code[data-md-inline-active="true"]::after {
+  content: "`";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  color: #8c959f;
+}
+.md-body a[data-md-inline-active="true"]::before {
+  content: "[";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body a[data-md-inline-active="true"]::after {
+  content: "](" attr(href) ")";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-size: 0.8em;
+  color: #8c959f;
+}
