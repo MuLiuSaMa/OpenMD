@@ -22,6 +22,7 @@ import { useUpdate } from "./stores/update";
 import { useNotice } from "./stores/notice";
 import { IS_STORE_BUILD } from "./lib/build-flags";
 import { openStandaloneFiles } from "./lib/openStandaloneFiles";
+import { useWindowWidth } from "./lib/useWindowWidth";
 import { viewInAnimation } from "./theme/theme";
 import {
   getOpenedFiles,
@@ -48,19 +49,26 @@ export default function App() {
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const refreshPath = useTabs((s) => s.refreshPath);
-  const { tocOpen, backgroundImage, editMode } = useSettings();
+  const { tocOpen, setTocOpen, backgroundImage } = useSettings();
+  const windowWidth = useWindowWidth();
+  const isNarrow = windowWidth < 860;
   const [openError, setOpenError] = useState<string | null>(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   // 托盘"检查更新"的结果提示(已是最新/失败);发现新版本时直接弹更新弹窗。
   // 提示条状态放在 store 里,链接打开失败等场景也能复用同一条横幅。
   const notice = useNotice((s) => s.text);
   const showNotice = useNotice((s) => s.show);
-  // 顶部提示条(编辑模式切换等):与底部 notice 相互独立,3 秒自动消失。
-  // phase 用于播退场动画(closing → 动画播完再卸载)。
-  const [topNotice, setTopNotice] = useState<{ text: string; phase: "open" | "closing" } | null>(null);
-  const topNoticeTimerRef = useRef<number | null>(null);
-  const topNoticeExitTimerRef = useRef<number | null>(null);
   const restoredRef = useRef(false);
+
+  // 窗口从宽切到窄时自动收起侧栏，避免侧栏常驻挤压正文。
+  const prevNarrowRef = useRef(isNarrow);
+  useEffect(() => {
+    const wasNarrow = prevNarrowRef.current;
+    prevNarrowRef.current = isNarrow;
+    if (!wasNarrow && isNarrow && useSettings.getState().tocOpen) {
+      setTocOpen(false);
+    }
+  }, [isNarrow, setTocOpen]);
 
   const activeTab = tabs.find((t) => t.id === activeId) ?? tabs[0];
 
@@ -108,31 +116,6 @@ export default function App() {
       unlistenTrayCheck.then((fn) => fn()).catch(() => {});
     };
   }, []);
-
-  // 顶部提示条(3 秒自动消失):先播入场动画,收起时切 closing 播退场动画再卸载。
-  const showTopNotice = (text: string) => {
-    if (topNoticeTimerRef.current !== null) window.clearTimeout(topNoticeTimerRef.current);
-    if (topNoticeExitTimerRef.current !== null) window.clearTimeout(topNoticeExitTimerRef.current);
-    setTopNotice({ text, phase: "open" });
-    topNoticeTimerRef.current = window.setTimeout(() => {
-      topNoticeTimerRef.current = null;
-      setTopNotice((n) => (n ? { ...n, phase: "closing" } : n));
-      topNoticeExitTimerRef.current = window.setTimeout(() => {
-        topNoticeExitTimerRef.current = null;
-        setTopNotice(null);
-      }, 160);
-    }, 3000);
-  };
-
-  // 编辑模式开关 → 顶部提示。按钮点击与 Ctrl+E 快捷键都会走到这里。
-  // 首次挂载不提示(避免恢复持久化的 editMode 时误弹);首页(无文档)也不提示。
-  const prevEditModeRef = useRef<boolean | null>(null);
-  useEffect(() => {
-    const prev = prevEditModeRef.current;
-    prevEditModeRef.current = editMode;
-    if (prev === null || prev === editMode || !activeTab?.path) return;
-    showTopNotice(editMode ? t("shell.editModeOn") : t("shell.editModeOff"));
-  }, [editMode, activeTab?.path, t]);
 
   // 启动固定停留在首页(不自动恢复上次会话);只处理系统"打开方式"
   // /拖拽缓冲的文件请求。在纯浏览器环境(开发预览)不处理。
@@ -270,9 +253,6 @@ export default function App() {
       } else if (key === "s") {
         e.preventDefault();
         void state.saveTab(state.activeId);
-      } else if (key === "e") {
-        e.preventDefault();
-        useSettings.getState().toggleEditMode();
       } else if (key === "tab") {
         e.preventDefault();
         const idx = state.tabs.findIndex((t) => t.id === state.activeId);
@@ -324,33 +304,14 @@ export default function App() {
           <TitleBar onOpenError={setOpenError} />
           <TabBar />
           <Flex flex={1} minH={0} position="relative">
-            {activeTab && <Sidebar open={showSidebar} />}
-            {activeTab && <MarkdownView key={activeTab.id} tab={activeTab} />}
-            {/* 提示条落在内容区顶部居中(不压 Tab 栏):data-placement=bottom 让
-                slide-fade-in/out 表现为「自上滑入 / 向上滑出」。 */}
-            {topNotice && (
-              <Flex
-                data-placement="bottom"
-                position="absolute"
-                top="12px"
-                left="50%"
-                transform="translateX(-50%)"
-                animationStyle={topNotice.phase === "open" ? "slide-fade-in" : "slide-fade-out"}
-                animationDuration={topNotice.phase === "open" ? "fast" : "faster"}
-                animationFillMode="both"
-                bg="fg"
-                color="bg"
-                px={4}
-                py={2}
-                borderRadius="md"
-                fontSize="xs"
-                boxShadow="lg"
-                zIndex={100}
-                pointerEvents="none"
-              >
-                {topNotice.text}
-              </Flex>
+            {activeTab && (
+              <Sidebar
+                open={showSidebar}
+                overlay={isNarrow}
+                onClose={() => setTocOpen(false)}
+              />
             )}
+            {activeTab && <MarkdownView key={activeTab.id} tab={activeTab} />}
           </Flex>
           <StatusBar />
         </Flex>

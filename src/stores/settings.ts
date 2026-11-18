@@ -34,21 +34,19 @@ interface SettingsState {
   backgroundImage: string | null;
   /** 背景图片的模糊半径(px),默认 [DEFAULT_BACKGROUND_BLUR]。 */
   backgroundBlur: number;
-  /** 主视图模式:预览(渲染)或代码(原始 Markdown 源码)。 */
+  /** 主视图模式:预览(MarkText 式所见即所得)或代码(原始 Markdown 源码)。 */
   viewMode: ViewMode;
-  /** 编辑模式:代码视图出现可编辑覆盖层,预览视图 contentEditable。 */
-  editMode: boolean;
   /** 关闭窗口行为(勾选"不再提醒"后由关闭对话框写入)。 */
   closeAction: CloseAction;
   language: Language;
   setFontSize: (n: number) => void;
   toggleToc: () => void;
+  setTocOpen: (open: boolean) => void;
   setSidebarTab: (v: SidebarTab) => void;
   setContentPadding: (n: number) => void;
   setBackgroundImage: (path: string | null) => void;
   setBackgroundBlur: (n: number) => void;
   setViewMode: (v: ViewMode) => void;
-  toggleEditMode: () => void;
   setCloseAction: (v: CloseAction) => void;
   setLanguage: (l: Language) => void;
 }
@@ -63,12 +61,12 @@ export const useSettings = create<SettingsState>()(
       backgroundImage: null,
       backgroundBlur: DEFAULT_BACKGROUND_BLUR,
       viewMode: "preview",
-      editMode: false,
       closeAction: "ask",
       language: "auto",
       // 字号滑动过渡在 MarkdownView 的 font-size transition 中实现。
       setFontSize: (n) => set({ fontSize: Math.min(28, Math.max(13, n)) }),
       toggleToc: () => set((s) => ({ tocOpen: !s.tocOpen })),
+      setTocOpen: (open) => set({ tocOpen: open }),
       setSidebarTab: (v) => set({ sidebarTab: v }),
       // 预览左右边距:0-480px,与字号一样做钳制,避免滑块/输入越界。
       setContentPadding: (n) =>
@@ -78,7 +76,6 @@ export const useSettings = create<SettingsState>()(
       setBackgroundBlur: (n) =>
         set({ backgroundBlur: Math.min(MAX_BACKGROUND_BLUR, Math.max(0, n)) }),
       setViewMode: (v) => set({ viewMode: v }),
-      toggleEditMode: () => set((s) => ({ editMode: !s.editMode })),
       setCloseAction: (v) => set({ closeAction: v }),
       setLanguage: (l) => set({ language: l }),
     }),

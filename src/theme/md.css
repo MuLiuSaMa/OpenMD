@@ -865,13 +865,13 @@
 .md-code-view {
   max-width: 100%;
   margin: 0 auto;
-  padding: 24px 32px 64px;
+  padding: 24px clamp(12px, 3vw, 32px) 64px;
 }
 .md-code-view .md-code-pre {
   margin: 0;
   padding: 20px 24px;
   border-radius: 10px;
-  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   white-space: pre-wrap;   /* 长行折行,避免横向滚动 */
@@ -903,7 +903,7 @@
   grid-area: 1 / 1;
 }
 .md-code-view .md-code-textarea {
-  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   margin: 0;
@@ -926,8 +926,7 @@
   caret-color: #e6e6e6;
 }
 
-/* 编辑模式下的预览:给一块可编辑区域一个克制的视觉提示。 */
+/* 统一所见即所得编辑区:保持文档阅读观感,不加常驻边框或聚焦轮廓。 */
 .md-body[contenteditable="true"] {
-  box-shadow: 0 0 0 1px var(--md-edit-ring, rgba(127, 127, 127, 0.25));
-  border-radius: 10px;
+  outline: none;
 }

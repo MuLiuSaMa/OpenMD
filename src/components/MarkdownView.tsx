@@ -31,7 +31,6 @@ import { renderRichBlocks } from "../renderer/richBlocks";
 import { applyLinePatches, collectPatches, patchFromBlock, shiftForLine } from "../renderer/previewEdit";
 import {
   copyImage,
-  copySelection,
   isLocalImageSrc,
   readClipboardText,
   selectionText,
@@ -281,14 +280,14 @@ function splitHighlightedLines(html: string): string[] {
 
 export function MarkdownView({ tab }: { tab: Tab }) {
   const { t } = useTranslation();
-  const { fontSize, contentPadding, viewMode, setViewMode, editMode } = useSettings();
+  const { fontSize, contentPadding, viewMode, setViewMode } = useSettings();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();
   const setScrollInStore = useTabs((s) => s.setScroll);
   const updateDraft = useTabs((s) => s.updateDraft);
 
-  const editing = editMode && tab.path !== null;
+  const editing = tab.path !== null;
   const [presenting, setPresenting] = useState(false);
 
   const baseDir = tab.path ? dirnameOf(tab.path) : undefined;
@@ -351,7 +350,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在边界时刻同步
-  }, [tab.content, tab.id, viewMode, editMode]);
+  }, [tab.content, tab.id, viewMode]);
   const { html, assetPaths, frontmatter, isMarp } = useMemo(() => {
     if (tab.error) {
       return { html: "", assetPaths: [] as string[], frontmatter: null, isMarp: false };
@@ -495,12 +494,12 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
     // Link handling: external URLs → system browser; local paths → in-app
     // (markdown) or system (everything else).
-    // Wiki 链接:按工作区解析目标后直接打开。
+    // Wiki 链接:按工作区解析目标后直接打开(Ctrl/Cmd + 点击打开,普通点击放置光标编辑)。
     article.querySelectorAll("a.wiki-link").forEach((el) => {
       const link = el as HTMLAnchorElement;
       link.addEventListener("click", async (e) => {
         e.preventDefault();
-        if (editMode) return;
+        if (!(e.ctrlKey || e.metaKey)) return;
         const target = link.getAttribute("data-wiki-target");
         const workspaceRoot = useWorkspace.getState().root;
         if (!target || !workspaceRoot || !tab.path) return;
@@ -519,8 +518,8 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       if (!href || href.startsWith("#")) return;
       link.addEventListener("click", (e) => {
         e.preventDefault();
-        // 编辑模式下点击是为了放置光标,不打开链接。
-        if (editMode) return;
+        // 统一编辑模式下,普通点击放置光标,Ctrl/Cmd + 点击打开链接。
+        if (!(e.ctrlKey || e.metaKey)) return;
         void openHref(href);
       });
     });
@@ -530,7 +529,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       // 卸载(切走/回首页)时清空目录;重挂载会立即重新提取
       setEntries([]);
     };
-  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, isDark, assetPaths, setEntries, setActive, openHref]);
+  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, isDark, assetPaths, setEntries, setActive, openHref]);
 
   // 预览编辑:contentEditable 的变更 → 段落级映射回源码草稿。预览 DOM 不重渲染,
   // 光标不丢;400ms 去抖把同一块的多条变更合并成一次替换。行号在 patch 间会漂移,
@@ -941,60 +940,6 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       const link = target.closest("a");
       const sel = selectionText();
 
-      if (!editing) {
-        const entries: MenuEntry[] = [
-          {
-            type: "item",
-            label: t("viewer.menu.copy"),
-            icon: <Copy size={14} />,
-            disabled: sel.length === 0,
-            onClick: () => void copySelection().catch(() => {}),
-          },
-        ];
-        if (img) {
-          entries.push(
-            {
-              type: "item",
-              label: t("viewer.menu.copyImage"),
-              icon: <ImageIcon size={14} />,
-              // 远程图受 CORS 限制,复制到剪贴板大概率失败,只留"复制地址"。
-              disabled: !isLocalImageSrc(img.currentSrc || img.src),
-              onClick: () => void copyImage(img).catch((e) => console.warn("复制图片失败:", e)),
-            },
-            {
-              type: "item",
-              label: t("viewer.menu.copyImageAddress"),
-              icon: <Link2 size={14} />,
-              onClick: () =>
-                void navigator.clipboard
-                  .writeText(img.getAttribute("data-original-src") ?? img.src)
-                  .catch(() => {}),
-            },
-          );
-        }
-        const href = link?.getAttribute("href");
-        if (href) {
-          entries.push({
-            type: "item",
-            label: t("viewer.menu.openLink"),
-            icon: <ExternalLink size={14} />,
-            onClick: () => void openHref(href),
-          });
-        }
-        entries.push(
-          { type: "sep" },
-          {
-            type: "item",
-            label: t("viewer.menu.selectAll"),
-            onClick: () => {
-              const scope = articleRef.current ?? target;
-              window.getSelection()?.selectAllChildren(scope);
-            },
-          },
-        );
-        return entries;
-      }
-
       if (viewMode === "code") {
         const ta = codeTextareaRef.current;
         const hasSel = !!ta && ta.selectionStart < ta.selectionEnd;
@@ -1014,7 +959,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         ];
       }
 
-      // 编辑开 + 预览
+      // 统一所见即所得视图(参考 MarkText 二合一)
       const entries: MenuEntry[] = [
         { type: "item", label: t("viewer.menu.undo"), icon: <Undo2 size={14} />, onClick: menuUndo },
         { type: "item", label: t("viewer.menu.redo"), icon: <Redo2 size={14} />, onClick: menuRedo },
@@ -1045,6 +990,15 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         { type: "sep" },
         { type: "item", label: t("viewer.menu.insertImage"), icon: <ImagePlus size={14} />, onClick: () => void insertImageAtCaret() },
       ];
+      const href = link?.getAttribute("href");
+      if (href) {
+        entries.push({
+          type: "item",
+          label: t("viewer.menu.openLink"),
+          icon: <ExternalLink size={14} />,
+          onClick: () => void openHref(href),
+        });
+      }
       if (sel.length > 0) {
         // 选中文本:排版(加粗进浏览器撤销栈;字号 span / 对齐 align 由段落映射回源码)。
         // 选区起始块的对齐状态用于高亮当前布局;起始处计算字号作为步进器初值。
@@ -1103,7 +1057,25 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         );
       }
       if (img) {
-        entries.push({ type: "item", label: t("viewer.menu.replaceImage"), icon: <Replace size={14} />, onClick: () => void replaceImage(img) });
+        entries.push(
+          {
+            type: "item",
+            label: t("viewer.menu.copyImage"),
+            icon: <ImageIcon size={14} />,
+            disabled: !isLocalImageSrc(img.currentSrc || img.src),
+            onClick: () => void copyImage(img).catch((e) => console.warn("复制图片失败:", e)),
+          },
+          {
+            type: "item",
+            label: t("viewer.menu.copyImageAddress"),
+            icon: <Link2 size={14} />,
+            onClick: () =>
+              void navigator.clipboard
+                .writeText(img.getAttribute("data-original-src") ?? img.src)
+                .catch(() => {}),
+          },
+          { type: "item", label: t("viewer.menu.replaceImage"), icon: <Replace size={14} />, onClick: () => void replaceImage(img) },
+        );
         entries.push({ type: "sep" });
         const wAttr = img.getAttribute("width");
         const natural = img.naturalWidth || 0;
@@ -1121,6 +1093,17 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           },
         );
       }
+      entries.push(
+        { type: "sep" },
+        {
+          type: "item",
+          label: t("viewer.menu.selectAll"),
+          onClick: () => {
+            const scope = articleRef.current ?? target;
+            window.getSelection()?.selectAllChildren(scope);
+          },
+        },
+      );
       return entries;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 菜单条目依赖众多动作回调,均为稳定 useCallback
@@ -1377,10 +1360,10 @@ export function MarkdownView({ tab }: { tab: Tab }) {
                 suppressContentEditableWarning
                 onMouseOver={onArticleMouseOver}
                 style={{
-                  // 内容宽度只由左右边距决定:边距 0 = 铺满,调大即收窄阅读栏,连续无跳变。
+                  // 内容宽度随窗口自适应:宽屏按边距收窄阅读栏,窄屏自动收缩左右边距保证正文可读。
                   maxWidth: "100%",
                   margin: "0 auto",
-                  padding: `32px ${contentPadding}px 64px`,
+                  padding: `32px min(${contentPadding}px, max(20px, calc(50% - 280px))) 64px`,
                   fontSize,
                   ["--md-font-size" as string]: `${fontSize}px`,
                   transition: "font-size 0.2s ease, padding 0.15s ease",

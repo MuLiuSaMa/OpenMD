@@ -21,7 +21,6 @@ import {
   Minus,
   Moon,
   PanelLeft,
-  Pencil,
   Plus,
   Save,
   Settings,
@@ -32,6 +31,7 @@ import { useSettings, MAX_CONTENT_PADDING } from "../stores/settings";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
+import { useWindowWidth } from "../lib/useWindowWidth";
 import { isDirty, useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
 import { IS_MACOS } from "../utils/platform";
@@ -70,9 +70,11 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
     setSidebarTab,
     contentPadding,
     setContentPadding,
-    editMode,
-    toggleEditMode,
   } = useSettings();
+  const windowWidth = useWindowWidth();
+  const isCompact = windowWidth < 900;
+  const isVeryNarrow = windowWidth < 700;
+  const isUltraNarrow = windowWidth < 540;
   const openPaths = useTabs((s) => s.openPath);
   const activeTab = useTabs((s) => s.tabs.find((x) => x.id === s.activeId));
   const saveTab = useTabs((s) => s.saveTab);
@@ -228,8 +230,19 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
       alignItems="center"
       data-tauri-drag-region=""
     >
-      <Grid templateColumns="1fr auto 1fr" w="100%" alignItems="center" data-tauri-drag-region="">
-        <Box justifySelf="start" display="flex" alignItems="center" data-tauri-drag-region="">
+      <Grid
+        templateColumns={isVeryNarrow ? "auto minmax(0, 1fr) auto" : "1fr auto 1fr"}
+        w="100%"
+        alignItems="center"
+        gap={isVeryNarrow ? 1 : 2}
+        data-tauri-drag-region=""
+      >
+        <Box
+          justifySelf="start"
+          display={isUltraNarrow ? "none" : "flex"}
+          alignItems="center"
+          data-tauri-drag-region=""
+        >
           {/* wordmark PNG 上下各有约34%透明留白(字形仅占30%高度),
               用固定高度容器 + 负 margin 裁剪到字形本身,栏高保持紧凑。 */}
           <Box h="18px" overflow="hidden" display="flex" flexShrink={0} data-tauri-drag-region="">
@@ -249,37 +262,29 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           </Box>
         </Box>
 
-        <HStack gap={1} justifySelf="center" data-tauri-drag-region="">
-          {/* 编辑/保存:从正文区移到顶栏「打开」左侧,作用于当前文档。 */}
+        <HStack
+          gap={isCompact ? 0.5 : 1}
+          justifySelf="center"
+          minW={0}
+          flexShrink={1}
+          data-tauri-drag-region=""
+        >
+          {/* 保存:作用于当前文档。 */}
           {canEdit && (
-            <>
-              <Button
-                aria-label={t("viewer.toolbar.toggleEdit")}
-                title={t("viewer.toolbar.editTitle")}
-                variant="ghost"
-                size="sm"
-                gap={1.5}
-                bg={editMode ? "fg" : "transparent"}
-                color={editMode ? "bg" : "fg"}
-                _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
-                onClick={toggleEditMode}
-              >
-                <Pencil size={15} />
-                {t("viewer.toolbar.edit")}
-              </Button>
-              <Button
-                aria-label={t("viewer.toolbar.saveShortcut")}
-                title={t("viewer.toolbar.saveShortcut")}
-                variant="ghost"
-                size="sm"
-                gap={1.5}
-                disabled={!dirty}
-                onClick={() => activeTab && void saveTab(activeTab.id)}
-              >
-                <Save size={15} />
-                {t("viewer.toolbar.save")}
-              </Button>
-            </>
+            <Button
+              aria-label={t("viewer.toolbar.saveShortcut")}
+              title={t("viewer.toolbar.saveShortcut")}
+              variant="ghost"
+              size="sm"
+              px={isCompact ? 2 : undefined}
+              gap={1.5}
+              flexShrink={0}
+              disabled={!dirty}
+              onClick={() => activeTab && void saveTab(activeTab.id)}
+            >
+              <Save size={15} />
+              {!isCompact && t("viewer.toolbar.save")}
+            </Button>
           )}
           <Menu.Root
             open={openMenu}
@@ -292,12 +297,14 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
                 title={t("shell.open")}
                 variant="ghost"
                 size="sm"
-                gap={1.5}
+                px={isCompact ? 2 : undefined}
+                gap={isCompact ? 1 : 1.5}
+                flexShrink={0}
                 onPointerEnter={showOpenMenu}
                 onPointerLeave={scheduleOpenMenuClose}
               >
                 <FolderOpen size={15} />
-                {t("shell.open")}
+                {!isCompact && t("shell.open")}
                 <ChevronDown size={12} opacity={0.55} />
               </Button>
             </Menu.Trigger>
@@ -405,11 +412,13 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             title={t("shell.tocBarShortcut")}
             variant={tocShown ? "subtle" : "ghost"}
             size="sm"
+            px={isCompact ? 2 : undefined}
             gap={1.5}
+            flexShrink={0}
             onClick={handleTocButton}
           >
             <PanelLeft size={15} />
-            {t("shell.toc")}
+            {!isCompact && t("shell.toc")}
           </Button>
 
           <Box
@@ -417,6 +426,7 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             position="relative"
             display="flex"
             alignItems="center"
+            flexShrink={0}
             onPointerEnter={showPaddingPanel}
             onPointerLeave={handlePaddingLeave}
           >
@@ -425,11 +435,12 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
               title={t("shell.marginTitle")}
               variant="ghost"
               size="sm"
-              gap={1.5}
+              px={isCompact ? 2 : undefined}
+              gap={isCompact ? 1 : 1.5}
               onClick={showPaddingPanel}
             >
               <StretchHorizontal size={15} />
-              {t("shell.margin")}
+              {!isCompact && t("shell.margin")}
               <ChevronDown size={12} opacity={0.55} />
             </Button>
 
@@ -510,11 +521,13 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             title={t("shell.settings")}
             variant="ghost"
             size="sm"
+            px={isCompact ? 2 : undefined}
             gap={1.5}
+            flexShrink={0}
             onClick={() => setSettingsOpen(true)}
           >
             <Settings size={15} />
-            {t("shell.settings")}
+            {!isCompact && t("shell.settings")}
           </Button>
 
           <ThemeToggle />

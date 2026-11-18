@@ -23,8 +23,10 @@ export function StatusBar() {
       as="footer"
       h="26px"
       px={3}
-      gap={4}
+      gap={{ base: 2, md: 4 }}
       flexShrink={0}
+      overflow="hidden"
+      whiteSpace="nowrap"
       borderTopWidth="1px"
       borderColor="border.subtle"
       bg="bg.subtle"
@@ -32,21 +34,34 @@ export function StatusBar() {
       color="fg.muted"
       userSelect="none"
     >
-      <Text truncate maxW="45%">
+      <Text truncate minW={0} maxW="45%">
         {tab.path ?? "OpenMD"}
       </Text>
-      {tab.diskChanged && <Text color="orange.400">{t("shell.fileChangedOnDisk")}</Text>}
-      {isDirty(tab) && <Text color="fg">{t("shell.unsaved")}</Text>}
+      {tab.diskChanged && (
+        <Text flexShrink={0} color="orange.400">
+          {t("shell.fileChangedOnDisk")}
+        </Text>
+      )}
+      {isDirty(tab) && (
+        <Text flexShrink={0} color="fg">
+          {t("shell.unsaved")}
+        </Text>
+      )}
       {tab.path && (
         <>
-          <Text>{t("shell.wordCount", { count: wordCount })}</Text>
-          <Text>{t("shell.charCount", { count: charCount })}</Text>
-          <Text>{t("shell.headingCount", { count: entries.length })}</Text>
+          <Text flexShrink={0}>{t("shell.wordCount", { count: wordCount })}</Text>
+          <Text flexShrink={0}>{t("shell.charCount", { count: charCount })}</Text>
+          <Text flexShrink={0}>{t("shell.headingCount", { count: entries.length })}</Text>
         </>
       )}
       {/* 商店版不展示作者文案;出错提示保留 */}
       {(!IS_STORE_BUILD || tab.error) && (
-        <Text ms="auto" color="fg.subtle">
+        <Text
+          ms="auto"
+          flexShrink={0}
+          display={tab.error ? "block" : { base: "none", md: "block" }}
+          color="fg.subtle"
+        >
           {tab.error ? t("shell.openFailed") : t("shell.author")}
         </Text>
       )}
