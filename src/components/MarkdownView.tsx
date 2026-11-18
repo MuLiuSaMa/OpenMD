@@ -287,9 +287,19 @@ function splitHighlightedLines(html: string): string[] {
   return lines;
 }
 
-export function MarkdownView({ tab }: { tab: Tab }) {
+export function MarkdownView({
+  tab,
+  viewModeOverride,
+  onViewModeChange,
+}: {
+  tab: Tab;
+  viewModeOverride?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+}) {
   const { t } = useTranslation();
-  const { fontSize, contentPadding, viewMode, setViewMode } = useSettings();
+  const { fontSize, contentPadding, viewMode: globalViewMode, setViewMode: setGlobalViewMode } = useSettings();
+  const viewMode = viewModeOverride ?? globalViewMode;
+  const setViewMode = onViewModeChange ?? setGlobalViewMode;
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();

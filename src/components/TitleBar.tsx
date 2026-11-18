@@ -15,9 +15,11 @@ import {
 import { useTheme } from "next-themes";
 import {
   ChevronDown,
+  Columns2,
   FileText,
   FolderOpen,
   FolderTree,
+  GitCompareArrows,
   Minus,
   Moon,
   MoreHorizontal,
@@ -29,6 +31,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useSettings, MAX_CONTENT_PADDING } from "../stores/settings";
+import { useSplit } from "../stores/split";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
@@ -77,9 +80,12 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
   const isVeryNarrow = windowWidth < 700;
   const isUltraNarrow = windowWidth < 540;
 
+  const { splitOpen, diffOpen, toggleSplit, toggleDiff } = useSplit();
+
   // 窗口继续缩小时，将低优先级顶栏功能依次收纳进「⋯」溢出菜单。
-  const overflowFontSize = windowWidth < 620;
-  const overflowMargin = windowWidth < 560;
+  const overflowFontSize = windowWidth < 660;
+  const overflowMargin = windowWidth < 600;
+  const overflowSplit = windowWidth < 530;
   const overflowOpen = windowWidth < 500;
   const overflowSettings = windowWidth < 460;
   const overflowTheme = windowWidth < 430;
@@ -87,6 +93,7 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
   const hasOverflow =
     overflowFontSize ||
     overflowMargin ||
+    overflowSplit ||
     overflowOpen ||
     overflowSettings ||
     overflowTheme ||
@@ -444,6 +451,39 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
             {!isCompact && t("shell.toc")}
           </Button>
 
+          {canEdit && !overflowSplit && (
+            <>
+              <Button
+                aria-label="分屏"
+                title="分屏视图"
+                variant={splitOpen ? "subtle" : "ghost"}
+                size="sm"
+                px={isCompact ? 2 : undefined}
+                gap={1.5}
+                flexShrink={0}
+                onClick={toggleSplit}
+              >
+                <Columns2 size={15} />
+                {!isCompact && "分屏"}
+              </Button>
+              {splitOpen && (
+                <Button
+                  aria-label="Diff"
+                  title="在分屏中打开 Diff 对比"
+                  variant={diffOpen ? "subtle" : "ghost"}
+                  size="sm"
+                  px={isCompact ? 2 : undefined}
+                  gap={1.5}
+                  flexShrink={0}
+                  onClick={toggleDiff}
+                >
+                  <GitCompareArrows size={15} />
+                  {!isCompact && "Diff"}
+                </Button>
+              )}
+            </>
+          )}
+
           {!overflowMargin && (
             <Box
               ref={paddingWrapRef}
@@ -690,6 +730,42 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
                           ))}
                         </HStack>
                       </Box>
+                    )}
+                    {canEdit && overflowSplit && (
+                      <>
+                        <Menu.Item
+                          value="overflow-split"
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          fontSize="sm"
+                          px={2}
+                          py={1.5}
+                          borderRadius="6px"
+                          cursor="pointer"
+                          onClick={toggleSplit}
+                        >
+                          <Columns2 size={14} />
+                          {splitOpen ? "关闭分屏" : "分屏视图"}
+                        </Menu.Item>
+                        {splitOpen && (
+                          <Menu.Item
+                            value="overflow-diff"
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                            fontSize="sm"
+                            px={2}
+                            py={1.5}
+                            borderRadius="6px"
+                            cursor="pointer"
+                            onClick={toggleDiff}
+                          >
+                            <GitCompareArrows size={14} />
+                            {diffOpen ? "关闭 Diff" : "打开 Diff"}
+                          </Menu.Item>
+                        )}
+                      </>
                     )}
                     {overflowSettings && (
                       <Menu.Item
