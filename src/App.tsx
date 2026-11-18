@@ -4,8 +4,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { Flex, Box, Button, HStack, Text } from "@chakra-ui/react";
-import { GitCompareArrows, X } from "lucide-react";
+import { Flex, Box, Button, HStack, Menu, Portal, Text } from "@chakra-ui/react";
+import { Check, ChevronDown, GitCompareArrows, X } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { TabBar } from "./components/TabBar";
 import { Sidebar } from "./components/Sidebar";
@@ -45,6 +45,94 @@ const inTauri = "__TAURI_INTERNALS__" in window;
 function isMarkdownPath(p: string): boolean {
   const ext = p.split(".").pop()?.toLowerCase() ?? "";
   return MARKDOWN_EXTENSIONS.includes(ext);
+}
+
+interface TabSelectOption {
+  value: string;
+  label: string;
+}
+
+/** 自定义风格下拉选择器，替代原生 <select> 以保持桌面端主题与圆角弹窗一致性。 */
+function TabSelect({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+  flexFill = false,
+}: {
+  value: string;
+  options: TabSelectOption[];
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  flexFill?: boolean;
+}) {
+  const current = options.find((o) => o.value === value) ?? options[0];
+  return (
+    <Menu.Root positioning={{ placement: "bottom-start" }}>
+      <Menu.Trigger asChild>
+        <Button
+          aria-label={ariaLabel}
+          size="2xs"
+          variant="ghost"
+          px={2}
+          h="22px"
+          gap={1}
+          flex={flexFill ? 1 : undefined}
+          minW={0}
+          maxW={flexFill ? "100%" : "220px"}
+          justifyContent="space-between"
+          fontWeight="normal"
+          color="fg"
+        >
+          <Text truncate fontSize="xs">
+            {current?.label ?? ""}
+          </Text>
+          <ChevronDown size={12} opacity={0.6} style={{ flexShrink: 0 }} />
+        </Button>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner zIndex={1000}>
+          <Menu.Content
+            minW="180px"
+            maxW="320px"
+            maxH="260px"
+            overflowY="auto"
+            bg="bg"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            borderRadius="10px"
+            boxShadow="md"
+            p={1}
+          >
+            {options.map((opt) => {
+              const active = opt.value === value;
+              return (
+                <Menu.Item
+                  key={opt.value}
+                  value={opt.value}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  gap={2}
+                  fontSize="xs"
+                  px={2}
+                  py={1.5}
+                  borderRadius="6px"
+                  cursor="pointer"
+                  bg={active ? "bg.subtle" : "transparent"}
+                  fontWeight={active ? "medium" : "normal"}
+                  onClick={() => onChange(opt.value)}
+                >
+                  <Text truncate>{opt.label}</Text>
+                  {active && <Check size={12} style={{ flexShrink: 0 }} />}
+                </Menu.Item>
+              );
+            })}
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
+  );
 }
 
 export default function App() {
@@ -339,44 +427,30 @@ export default function App() {
                     bg="bg.subtle"
                     fontSize="xs"
                   >
-                    <Text color="fg.muted">左侧:</Text>
-                    <select
+                    <Text color="fg.muted" flexShrink={0}>
+                      左侧:
+                    </Text>
+                    <TabSelect
+                      ariaLabel="左侧对比文件"
                       value={leftTab.id}
-                      onChange={(e) => setLeftSplitTabId(e.target.value)}
-                      style={{
-                        background: "transparent",
-                        color: "inherit",
-                        fontSize: "12px",
-                        border: "1px solid var(--chakra-colors-border-subtle)",
-                        borderRadius: "4px",
-                        padding: "1px 6px",
-                      }}
-                    >
-                      {docTabs.map((dt) => (
-                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
-                          {dt.name}
-                        </option>
-                      ))}
-                    </select>
-                    <Text color="fg.muted">右侧(可编辑):</Text>
-                    <select
+                      options={docTabs.map((dt) => ({ value: dt.id, label: dt.name }))}
+                      onChange={(id) => setLeftSplitTabId(id)}
+                    />
+                    <Text color="fg.muted" flexShrink={0}>
+                      右侧(可编辑):
+                    </Text>
+                    <TabSelect
+                      ariaLabel="右侧对比文件"
                       value={rightTab.id}
-                      onChange={(e) => setSplitTabId(e.target.value)}
-                      style={{
-                        background: "transparent",
-                        color: "inherit",
-                        fontSize: "12px",
-                        border: "1px solid var(--chakra-colors-border-subtle)",
-                        borderRadius: "4px",
-                        padding: "1px 6px",
-                      }}
-                    >
-                      {docTabs.map((dt) => (
-                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
-                          {dt.id === leftTab.id ? `${dt.name} (已保存 vs 当前编辑)` : dt.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={docTabs.map((dt) => ({
+                        value: dt.id,
+                        label:
+                          dt.id === leftTab.id
+                            ? `${dt.name} (已保存 vs 当前编辑)`
+                            : dt.name,
+                      }))}
+                      onChange={(id) => setSplitTabId(id)}
+                    />
                   </HStack>
                 )}
                 <DiffView
@@ -419,26 +493,13 @@ export default function App() {
                     bg="bg.subtle"
                     fontSize="xs"
                   >
-                    <select
-                      aria-label="左侧分屏文档"
+                    <TabSelect
+                      ariaLabel="左侧分屏文档"
+                      flexFill
                       value={leftTab.id}
-                      onChange={(e) => setLeftSplitTabId(e.target.value)}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        background: "transparent",
-                        color: "inherit",
-                        fontSize: "12px",
-                        border: "none",
-                        outline: "none",
-                      }}
-                    >
-                      {docTabs.map((dt) => (
-                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
-                          {dt.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={docTabs.map((dt) => ({ value: dt.id, label: dt.name }))}
+                      onChange={(id) => setLeftSplitTabId(id)}
+                    />
                   </HStack>
                   <MarkdownView
                     key={`split-left-${leftTab.id}`}
@@ -464,26 +525,13 @@ export default function App() {
                     bg="bg.subtle"
                     fontSize="xs"
                   >
-                    <select
-                      aria-label="右侧分屏文档"
+                    <TabSelect
+                      ariaLabel="右侧分屏文档"
+                      flexFill
                       value={rightTab.id}
-                      onChange={(e) => setSplitTabId(e.target.value)}
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        background: "transparent",
-                        color: "inherit",
-                        fontSize: "12px",
-                        border: "none",
-                        outline: "none",
-                      }}
-                    >
-                      {docTabs.map((dt) => (
-                        <option key={dt.id} value={dt.id} style={{ color: "#111" }}>
-                          {dt.name}
-                        </option>
-                      ))}
-                    </select>
+                      options={docTabs.map((dt) => ({ value: dt.id, label: dt.name }))}
+                      onChange={(id) => setSplitTabId(id)}
+                    />
                     <Button
                       size="2xs"
                       variant="ghost"
