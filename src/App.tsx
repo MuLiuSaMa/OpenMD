@@ -4,8 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { Flex, Box, IconButton } from "@chakra-ui/react";
-import { PanelLeft } from "lucide-react";
+import { Flex, Box } from "@chakra-ui/react";
 import { TitleBar } from "./components/TitleBar";
 import { TabBar } from "./components/TabBar";
 import { Sidebar } from "./components/Sidebar";
@@ -311,26 +310,6 @@ export default function App() {
                 overlay={isNarrow}
                 onClose={() => setTocOpen(false)}
               />
-            )}
-            {isNarrow && !showSidebar && activeTab?.path && (
-              <IconButton
-                aria-label={t("shell.tocBar")}
-                title={t("shell.tocBarShortcut")}
-                position="absolute"
-                top="8px"
-                left="12px"
-                zIndex={45}
-                size="xs"
-                variant="outline"
-                bg="bg.panel"
-                borderColor="border.subtle"
-                boxShadow="sm"
-                backdropFilter="blur(8px)"
-                borderRadius="8px"
-                onClick={() => setTocOpen(true)}
-              >
-                <PanelLeft size={14} />
-              </IconButton>
             )}
             {activeTab && <MarkdownView key={activeTab.id} tab={activeTab} />}
           </Flex>
