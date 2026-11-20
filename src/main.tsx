@@ -6,6 +6,7 @@ import { system } from "./theme/theme";
 import App from "./App";
 import "./i18n";
 import LanguageSync from "./components/LanguageSync";
+import FontSync from "./components/FontSync";
 import "katex/dist/katex.min.css";
 import "markdown-it-github-alerts/styles/github-base.css";
 import "markdown-it-github-alerts/styles/github-colors-dark-class.css";
@@ -19,6 +20,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <ChakraProvider value={system}>
       <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
         <LanguageSync />
+        <FontSync />
         <App />
       </ThemeProvider>
     </ChakraProvider>

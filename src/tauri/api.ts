@@ -118,6 +118,15 @@ export async function listWorkspaceDir(path: string): Promise<WorkspaceEntry[]> 
   return invoke("list_workspace_dir", { path });
 }
 
+/** 枚举系统已安装的字体家族名称（非 Tauri 环境降级返回空数组）。 */
+export async function listSystemFonts(): Promise<string[]> {
+  try {
+    return await invoke<string[]>("list_system_fonts");
+  } catch {
+    return [];
+  }
+}
+
 /** What a whole workspace holds, for the home screen's file browser. */
 export interface WorkspaceFiles {
   /** Total readable text documents found under the root (bounded scan). */

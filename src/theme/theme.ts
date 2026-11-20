@@ -1,10 +1,10 @@
 import { createSystem, defaultConfig, defineConfig } from "@chakra-ui/react";
 
-// MiSans 可变字体(全字重),全局默认字体;回退到系统字体栈。
+// MiSans 可变字体(全字重),全局默认字体;支持通过设置中的 --openmd-ui-font / --openmd-code-font 覆盖。
 const APP_FONTS =
-  '"MiSans", "MiSans VF", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif';
+  'var(--openmd-ui-font, "MiSans", "MiSans VF", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif)';
 const MONO_FONTS =
-  '"Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace';
+  'var(--openmd-code-font, "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace)';
 
 const config = defineConfig({
   globalCss: {

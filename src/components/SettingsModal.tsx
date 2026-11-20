@@ -8,6 +8,7 @@ import {
   HStack,
   IconButton,
   Image,
+  Input,
   Menu,
   Portal,
   Slider,
@@ -31,24 +32,33 @@ import {
   Palette,
   Plus,
   RefreshCw,
+  RotateCcw,
   SlidersHorizontal,
+  Type,
   X,
 } from "lucide-react";
 import { useSettings, MAX_BACKGROUND_BLUR, type Language } from "../stores/settings";
 import { useUpdate } from "../stores/update";
 import { IS_STORE_BUILD } from "../lib/build-flags";
-import { isMdAssociated, openImageDialog, registerMdAssociation, unregisterMdAssociation } from "../tauri/api";
+import {
+  isMdAssociated,
+  listSystemFonts,
+  openImageDialog,
+  registerMdAssociation,
+  unregisterMdAssociation,
+} from "../tauri/api";
 import { useBackgroundSrc } from "../lib/useBackgroundSrc";
 import { useOverlayBlur } from "../lib/overlayBlur";
 import { FloatingScrollbar } from "./FloatingScrollbar";
 import { QqGroupSection } from "./QqGroupSection";
 
-type SectionId = "general" | "appearance" | "sponsor" | "qq" | "about";
+type SectionId = "general" | "appearance" | "fonts" | "sponsor" | "qq" | "about";
 
 // 图标兼容 lucide 与 react-icons 两类组件
 const SECTIONS: { id: SectionId; labelKey: string; icon: ComponentType<{ size?: number | string }> }[] = [
   { id: "general", labelKey: "settings.section.general", icon: SlidersHorizontal },
   { id: "appearance", labelKey: "settings.section.appearance", icon: Palette },
+  { id: "fonts", labelKey: "settings.section.fonts", icon: Type },
   { id: "sponsor", labelKey: "settings.section.sponsor", icon: Heart },
   { id: "qq", labelKey: "settings.section.qq", icon: FaQq },
   { id: "about", labelKey: "settings.section.about", icon: Info },
@@ -296,6 +306,298 @@ function AppearanceSection() {
           </HStack>
         </Flex>
       )}
+    </VStack>
+  );
+}
+
+/** 自定义字体选择器：支持搜索系统字体 + 输入自定义字体名。 */
+function FontPicker({
+  label,
+  value,
+  systemFonts,
+  loading,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  systemFonts: string[];
+  loading: boolean;
+  onChange: (next: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [customDraft, setCustomDraft] = useState(value);
+
+  useEffect(() => {
+    setCustomDraft(value);
+  }, [value]);
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredFonts = normalizedQuery
+    ? systemFonts.filter((f) => f.toLowerCase().includes(normalizedQuery))
+    : systemFonts;
+
+  const applyCustom = () => {
+    onChange(customDraft.trim());
+    setOpen(false);
+  };
+
+  return (
+    <Flex
+      justify="space-between"
+      align="center"
+      gap={4}
+      py={2.5}
+      borderBottomWidth="1px"
+      borderColor="border.subtle"
+      _last={{ borderBottomWidth: 0 }}
+    >
+      <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+        {label}
+      </Text>
+      <Menu.Root
+        open={open}
+        onOpenChange={(e) => {
+          setOpen(e.open);
+          if (!e.open) setQuery("");
+        }}
+        positioning={{ placement: "bottom-end" }}
+      >
+        <Menu.Trigger asChild>
+          <Button
+            size="xs"
+            variant="outline"
+            borderColor="border.subtle"
+            gap={1.5}
+            maxW="260px"
+            minW="150px"
+            justifyContent="space-between"
+          >
+            <Text
+              truncate
+              fontSize="xs"
+              style={value ? { fontFamily: value } : undefined}
+            >
+              {value || t("settings.fonts.default")}
+            </Text>
+            <ChevronDown size={13} style={{ flexShrink: 0 }} />
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner zIndex={1500}>
+            <Box
+              w="280px"
+              bg="bg"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              borderRadius="10px"
+              boxShadow="lg"
+              p={2}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 自定义字体输入 */}
+              <HStack gap={1} mb={1.5}>
+                <Input
+                  size="xs"
+                  placeholder={t("settings.fonts.customPlaceholder")}
+                  value={customDraft}
+                  onChange={(e) => setCustomDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyCustom();
+                    }
+                  }}
+                />
+                <Button size="xs" variant="subtle" onClick={applyCustom}>
+                  {t("settings.fonts.applyCustom")}
+                </Button>
+              </HStack>
+
+              {/* 系统字体搜索 */}
+              <Input
+                size="xs"
+                mb={1.5}
+                placeholder={t("settings.fonts.searchPlaceholder")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+
+              <VStack align="stretch" gap={0.5} maxH="200px" overflowY="auto">
+                <Button
+                  size="xs"
+                  variant={value === "" ? "subtle" : "ghost"}
+                  justifyContent="space-between"
+                  fontWeight={value === "" ? "medium" : "normal"}
+                  onClick={() => {
+                    onChange("");
+                    setOpen(false);
+                  }}
+                >
+                  <Text fontSize="xs">{t("settings.fonts.default")}</Text>
+                  {value === "" && <Check size={12} />}
+                </Button>
+
+                {loading ? (
+                  <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
+                    {t("settings.fonts.loading")}
+                  </Text>
+                ) : filteredFonts.length === 0 ? (
+                  <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
+                    {t("settings.fonts.noMatch")}
+                  </Text>
+                ) : (
+                  filteredFonts.slice(0, 200).map((font) => {
+                    const active = value === font;
+                    return (
+                      <Button
+                        key={font}
+                        size="xs"
+                        variant={active ? "subtle" : "ghost"}
+                        justifyContent="space-between"
+                        fontWeight={active ? "medium" : "normal"}
+                        onClick={() => {
+                          onChange(font);
+                          setOpen(false);
+                        }}
+                      >
+                        <Text truncate fontSize="xs" style={{ fontFamily: `"${font}"` }}>
+                          {font}
+                        </Text>
+                        {active && <Check size={12} style={{ flexShrink: 0 }} />}
+                      </Button>
+                    );
+                  })
+                )}
+              </VStack>
+            </Box>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+    </Flex>
+  );
+}
+
+/** 分级字体设置：界面 / 预览模式（英文/中文）/ 代码模式（英文/中文）。 */
+function FontsSection() {
+  const { t } = useTranslation();
+  const {
+    uiFont,
+    previewZhFont,
+    previewEnFont,
+    codeZhFont,
+    codeEnFont,
+    setUiFont,
+    setPreviewZhFont,
+    setPreviewEnFont,
+    setCodeZhFont,
+    setCodeEnFont,
+    resetFonts,
+  } = useSettings();
+  const [systemFonts, setSystemFonts] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    listSystemFonts()
+      .then((fonts) => {
+        if (alive) setSystemFonts(fonts);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const hasCustom = Boolean(uiFont || previewZhFont || previewEnFont || codeZhFont || codeEnFont);
+
+  const groups = [
+    {
+      title: t("settings.fonts.group.interface"),
+      items: [{ key: "ui", label: t("settings.fonts.ui"), value: uiFont, onChange: setUiFont }],
+    },
+    {
+      title: t("settings.fonts.group.preview"),
+      items: [
+        {
+          key: "previewEn",
+          label: t("settings.fonts.previewEn"),
+          value: previewEnFont,
+          onChange: setPreviewEnFont,
+        },
+        {
+          key: "previewZh",
+          label: t("settings.fonts.previewZh"),
+          value: previewZhFont,
+          onChange: setPreviewZhFont,
+        },
+      ],
+    },
+    {
+      title: t("settings.fonts.group.code"),
+      items: [
+        {
+          key: "codeEn",
+          label: t("settings.fonts.codeEn"),
+          value: codeEnFont,
+          onChange: setCodeEnFont,
+        },
+        {
+          key: "codeZh",
+          label: t("settings.fonts.codeZh"),
+          value: codeZhFont,
+          onChange: setCodeZhFont,
+        },
+      ],
+    },
+  ];
+
+  return (
+    <VStack align="stretch" gap={4}>
+      {groups.map((group) => (
+        <Box
+          key={group.title}
+          borderWidth="1px"
+          borderColor="border.subtle"
+          borderRadius="10px"
+          px={3.5}
+          py={1.5}
+          bg="bg.subtle"
+        >
+          <Text fontSize="xs" fontWeight="semibold" color="fg.subtle" pt={1.5} pb={1}>
+            {group.title}
+          </Text>
+          <VStack align="stretch" gap={0} pl={2}>
+            {group.items.map((item) => (
+              <FontPicker
+                key={item.key}
+                label={item.label}
+                value={item.value}
+                systemFonts={systemFonts}
+                loading={loading}
+                onChange={item.onChange}
+              />
+            ))}
+          </VStack>
+        </Box>
+      ))}
+      <Flex justify="flex-end">
+        <Button
+          size="xs"
+          variant="ghost"
+          gap={1.5}
+          disabled={!hasCustom}
+          onClick={resetFonts}
+        >
+          <RotateCcw size={12} />
+          {t("settings.fonts.resetAll")}
+        </Button>
+      </Flex>
     </VStack>
   );
 }
@@ -709,6 +1011,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 <Box ref={contentRef} className="no-scrollbar" flex={1} minW={0} p={6} overflowY="auto">
                   {section === "general" && <GeneralSection />}
                   {section === "appearance" && <AppearanceSection />}
+                  {section === "fonts" && <FontsSection />}
                   {section === "sponsor" && <SponsorSection />}
                   {section === "qq" && <QqGroupSection />}
                   {section === "about" && <AboutSection />}

@@ -3,6 +3,7 @@ rust_i18n::i18n!("locales", fallback = "zh");
 mod commands;
 mod editors;
 mod file_assoc;
+mod fonts;
 mod i18n;
 mod pkg;
 mod qq_group;
@@ -218,6 +219,7 @@ pub fn run() {
             file_assoc::is_md_associated,
             file_assoc::register_md_association,
             file_assoc::unregister_md_association,
+            fonts::list_system_fonts,
             qq_group::get_qq_groups,
             qq_group::get_qq_group_icon,
         ])
