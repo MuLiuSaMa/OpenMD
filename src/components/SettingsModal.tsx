@@ -310,7 +310,7 @@ function AppearanceSection() {
   );
 }
 
-/** 自定义字体选择器：支持搜索系统字体 + 输入自定义字体名。 */
+/** 自定义字体选择器：内联展开面板，支持搜索系统字体 + 输入自定义字体名（避免与 Dialog 焦点锁定/层级冲突）。 */
 function FontPicker({
   label,
   value,
@@ -337,147 +337,140 @@ function FontPicker({
   const filteredFonts = normalizedQuery
     ? systemFonts.filter((f) => f.toLowerCase().includes(normalizedQuery))
     : systemFonts;
+  const visibleFonts = filteredFonts.slice(0, 60);
 
   const applyCustom = () => {
     onChange(customDraft.trim());
     setOpen(false);
+    setQuery("");
   };
 
   return (
-    <Flex
-      justify="space-between"
-      align="center"
-      gap={4}
-      py={2.5}
+    <Box
       borderBottomWidth="1px"
       borderColor="border.subtle"
       _last={{ borderBottomWidth: 0 }}
     >
-      <Text fontSize="sm" color="fg.muted" flexShrink={0}>
-        {label}
-      </Text>
-      <Menu.Root
-        open={open}
-        onOpenChange={(e) => {
-          setOpen(e.open);
-          if (!e.open) setQuery("");
-        }}
-        positioning={{ placement: "bottom-end" }}
-      >
-        <Menu.Trigger asChild>
-          <Button
+      <Flex justify="space-between" align="center" gap={4} py={2.5}>
+        <Text fontSize="sm" color="fg.muted" flexShrink={0}>
+          {label}
+        </Text>
+        <Button
+          size="xs"
+          variant="outline"
+          borderColor="border.subtle"
+          gap={1.5}
+          maxW="260px"
+          minW="150px"
+          justifyContent="space-between"
+          onClick={() => {
+            setOpen((v) => !v);
+            if (open) setQuery("");
+          }}
+        >
+          <Text truncate fontSize="xs" style={value ? { fontFamily: `"${value}"` } : undefined}>
+            {value || t("settings.fonts.default")}
+          </Text>
+          <ChevronDown
+            size={13}
+            style={{
+              flexShrink: 0,
+              transform: open ? "rotate(180deg)" : undefined,
+              transition: "transform 0.15s ease",
+            }}
+          />
+        </Button>
+      </Flex>
+
+      {open && (
+        <Box
+          mb={2.5}
+          p={2.5}
+          bg="bg"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          borderRadius="8px"
+        >
+          {/* 自定义字体输入 */}
+          <HStack gap={1.5} mb={2}>
+            <Input
+              size="xs"
+              placeholder={t("settings.fonts.customPlaceholder")}
+              value={customDraft}
+              onChange={(e) => setCustomDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  applyCustom();
+                }
+              }}
+            />
+            <Button size="xs" variant="subtle" onClick={applyCustom}>
+              {t("settings.fonts.applyCustom")}
+            </Button>
+          </HStack>
+
+          {/* 系统字体搜索 */}
+          <Input
             size="xs"
-            variant="outline"
-            borderColor="border.subtle"
-            gap={1.5}
-            maxW="260px"
-            minW="150px"
-            justifyContent="space-between"
-          >
-            <Text
-              truncate
-              fontSize="xs"
-              style={value ? { fontFamily: value } : undefined}
+            mb={2}
+            placeholder={t("settings.fonts.searchPlaceholder")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+
+          <VStack align="stretch" gap={0.5} maxH="170px" overflowY="auto">
+            <Button
+              size="xs"
+              variant={value === "" ? "subtle" : "ghost"}
+              justifyContent="space-between"
+              fontWeight={value === "" ? "medium" : "normal"}
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+                setQuery("");
+              }}
             >
-              {value || t("settings.fonts.default")}
-            </Text>
-            <ChevronDown size={13} style={{ flexShrink: 0 }} />
-          </Button>
-        </Menu.Trigger>
-        <Portal>
-          <Menu.Positioner zIndex={1500}>
-            <Box
-              w="280px"
-              bg="bg"
-              borderWidth="1px"
-              borderColor="border.subtle"
-              borderRadius="10px"
-              boxShadow="lg"
-              p={2}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* 自定义字体输入 */}
-              <HStack gap={1} mb={1.5}>
-                <Input
-                  size="xs"
-                  placeholder={t("settings.fonts.customPlaceholder")}
-                  value={customDraft}
-                  onChange={(e) => setCustomDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    e.stopPropagation();
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      applyCustom();
-                    }
-                  }}
-                />
-                <Button size="xs" variant="subtle" onClick={applyCustom}>
-                  {t("settings.fonts.applyCustom")}
-                </Button>
-              </HStack>
+              <Text fontSize="xs">{t("settings.fonts.default")}</Text>
+              {value === "" && <Check size={12} />}
+            </Button>
 
-              {/* 系统字体搜索 */}
-              <Input
-                size="xs"
-                mb={1.5}
-                placeholder={t("settings.fonts.searchPlaceholder")}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.stopPropagation()}
-              />
-
-              <VStack align="stretch" gap={0.5} maxH="200px" overflowY="auto">
-                <Button
-                  size="xs"
-                  variant={value === "" ? "subtle" : "ghost"}
-                  justifyContent="space-between"
-                  fontWeight={value === "" ? "medium" : "normal"}
-                  onClick={() => {
-                    onChange("");
-                    setOpen(false);
-                  }}
-                >
-                  <Text fontSize="xs">{t("settings.fonts.default")}</Text>
-                  {value === "" && <Check size={12} />}
-                </Button>
-
-                {loading ? (
-                  <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
-                    {t("settings.fonts.loading")}
-                  </Text>
-                ) : filteredFonts.length === 0 ? (
-                  <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
-                    {t("settings.fonts.noMatch")}
-                  </Text>
-                ) : (
-                  filteredFonts.slice(0, 200).map((font) => {
-                    const active = value === font;
-                    return (
-                      <Button
-                        key={font}
-                        size="xs"
-                        variant={active ? "subtle" : "ghost"}
-                        justifyContent="space-between"
-                        fontWeight={active ? "medium" : "normal"}
-                        onClick={() => {
-                          onChange(font);
-                          setOpen(false);
-                        }}
-                      >
-                        <Text truncate fontSize="xs" style={{ fontFamily: `"${font}"` }}>
-                          {font}
-                        </Text>
-                        {active && <Check size={12} style={{ flexShrink: 0 }} />}
-                      </Button>
-                    );
-                  })
-                )}
-              </VStack>
-            </Box>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
-    </Flex>
+            {loading ? (
+              <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
+                {t("settings.fonts.loading")}
+              </Text>
+            ) : visibleFonts.length === 0 ? (
+              <Text fontSize="xs" color="fg.subtle" px={2} py={2}>
+                {t("settings.fonts.noMatch")}
+              </Text>
+            ) : (
+              visibleFonts.map((font) => {
+                const active = value === font;
+                return (
+                  <Button
+                    key={font}
+                    size="xs"
+                    variant={active ? "subtle" : "ghost"}
+                    justifyContent="space-between"
+                    fontWeight={active ? "medium" : "normal"}
+                    onClick={() => {
+                      onChange(font);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <Text truncate fontSize="xs">
+                      {font}
+                    </Text>
+                    {active && <Check size={12} style={{ flexShrink: 0 }} />}
+                  </Button>
+                );
+              })
+            )}
+          </VStack>
+        </Box>
+      )}
+    </Box>
   );
 }
 
