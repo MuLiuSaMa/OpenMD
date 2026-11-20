@@ -5,12 +5,11 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { Flex, Box, Button, HStack, Menu, Portal, Text } from "@chakra-ui/react";
-import { Check, ChevronDown, GitCompareArrows, X } from "lucide-react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { TabBar } from "./components/TabBar";
 import { Sidebar } from "./components/Sidebar";
 import { MarkdownView } from "./components/MarkdownView";
-import { DiffView } from "./components/DiffView";
 import { EmptyState } from "./components/EmptyState";
 import { StatusBar } from "./components/StatusBar";
 import { UpdatePopup } from "./components/UpdatePopup";
@@ -140,9 +139,8 @@ export default function App() {
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
   const refreshPath = useTabs((s) => s.refreshPath);
-  const updateDraft = useTabs((s) => s.updateDraft);
   const { tocOpen, setTocOpen, backgroundImage } = useSettings();
-  const { splitOpen, diffOpen, splitTabId, setSplitOpen, setDiffOpen, setSplitTabId } = useSplit();
+  const { splitOpen, splitTabId, setSplitOpen, setSplitTabId } = useSplit();
   const [leftViewMode, setLeftViewMode] = useState<ViewMode>(() => useSettings.getState().viewMode);
   const [rightViewMode, setRightViewMode] = useState<ViewMode>("preview");
   const [leftSplitTabId, setLeftSplitTabId] = useState<string | null>(null);
@@ -414,68 +412,7 @@ export default function App() {
               />
             )}
             {activeTab && !splitOpen && <MarkdownView key={activeTab.id} tab={activeTab} />}
-            {activeTab && splitOpen && leftTab && rightTab && diffOpen && (
-              <Flex direction="column" flex={1} minW={0} minH={0}>
-                {docTabs.length > 1 && (
-                  <HStack
-                    h="30px"
-                    px={3}
-                    gap={2}
-                    flexShrink={0}
-                    borderBottomWidth="1px"
-                    borderColor="border.subtle"
-                    bg="bg.subtle"
-                    fontSize="xs"
-                  >
-                    <Text color="fg.muted" flexShrink={0}>
-                      左侧:
-                    </Text>
-                    <TabSelect
-                      ariaLabel="左侧对比文件"
-                      value={leftTab.id}
-                      options={docTabs.map((dt) => ({ value: dt.id, label: dt.name }))}
-                      onChange={(id) => setLeftSplitTabId(id)}
-                    />
-                    <Text color="fg.muted" flexShrink={0}>
-                      右侧(可编辑):
-                    </Text>
-                    <TabSelect
-                      ariaLabel="右侧对比文件"
-                      value={rightTab.id}
-                      options={docTabs.map((dt) => ({
-                        value: dt.id,
-                        label:
-                          dt.id === leftTab.id
-                            ? `${dt.name} (已保存 vs 当前编辑)`
-                            : dt.name,
-                      }))}
-                      onChange={(id) => setSplitTabId(id)}
-                    />
-                  </HStack>
-                )}
-                <DiffView
-                  leftTitle={
-                    rightTab.id === leftTab.id
-                      ? `${leftTab.name} (已保存)`
-                      : leftTab.name
-                  }
-                  leftText={
-                    rightTab.id === leftTab.id
-                      ? leftTab.content
-                      : (leftTab.draft ?? leftTab.content)
-                  }
-                  rightTitle={
-                    rightTab.id === leftTab.id
-                      ? `${rightTab.name} (当前编辑)`
-                      : rightTab.name
-                  }
-                  rightText={rightTab.draft ?? rightTab.content}
-                  onRightChange={(next) => updateDraft(rightTab.id, next)}
-                  onCloseDiff={() => setDiffOpen(false)}
-                />
-              </Flex>
-            )}
-            {activeTab && splitOpen && leftTab && rightTab && !diffOpen && (
+            {activeTab && splitOpen && leftTab && rightTab && (
               <Flex
                 flex={1}
                 minW={0}
@@ -504,6 +441,7 @@ export default function App() {
                   <MarkdownView
                     key={`split-left-${leftTab.id}`}
                     tab={leftTab}
+                    hideViewToggle
                     viewModeOverride={leftViewMode}
                     onViewModeChange={setLeftViewMode}
                   />
@@ -535,17 +473,6 @@ export default function App() {
                     <Button
                       size="2xs"
                       variant="ghost"
-                      gap={1}
-                      px={1.5}
-                      title="在分屏中打开 Diff 对比"
-                      onClick={() => setDiffOpen(true)}
-                    >
-                      <GitCompareArrows size={12} />
-                      Diff
-                    </Button>
-                    <Button
-                      size="2xs"
-                      variant="ghost"
                       px={1}
                       title="关闭分屏"
                       onClick={() => setSplitOpen(false)}
@@ -556,6 +483,7 @@ export default function App() {
                   <MarkdownView
                     key={`split-right-${rightTab.id}`}
                     tab={rightTab}
+                    hideViewToggle
                     viewModeOverride={
                       rightTab.id === leftTab.id && rightViewMode === leftViewMode
                         ? leftViewMode === "preview"

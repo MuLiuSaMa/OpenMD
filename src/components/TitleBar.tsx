@@ -19,7 +19,6 @@ import {
   FileText,
   FolderOpen,
   FolderTree,
-  GitCompareArrows,
   Minus,
   Moon,
   MoreHorizontal,
@@ -80,7 +79,7 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
   const isVeryNarrow = windowWidth < 700;
   const isUltraNarrow = windowWidth < 540;
 
-  const { splitOpen, diffOpen, toggleSplit, toggleDiff } = useSplit();
+  const { splitOpen, toggleSplit } = useSplit();
 
   // 窗口继续缩小时，将低优先级顶栏功能依次收纳进「⋯」溢出菜单。
   const overflowFontSize = windowWidth < 660;
@@ -452,36 +451,19 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           </Button>
 
           {canEdit && !overflowSplit && (
-            <>
-              <Button
-                aria-label="分屏"
-                title="分屏视图"
-                variant={splitOpen ? "subtle" : "ghost"}
-                size="sm"
-                px={isCompact ? 2 : undefined}
-                gap={1.5}
-                flexShrink={0}
-                onClick={toggleSplit}
-              >
-                <Columns2 size={15} />
-                {!isCompact && "分屏"}
-              </Button>
-              {splitOpen && (
-                <Button
-                  aria-label="Diff"
-                  title="在分屏中打开 Diff 对比"
-                  variant={diffOpen ? "subtle" : "ghost"}
-                  size="sm"
-                  px={isCompact ? 2 : undefined}
-                  gap={1.5}
-                  flexShrink={0}
-                  onClick={toggleDiff}
-                >
-                  <GitCompareArrows size={15} />
-                  {!isCompact && "Diff"}
-                </Button>
-              )}
-            </>
+            <Button
+              aria-label="分屏"
+              title="分屏视图"
+              variant={splitOpen ? "subtle" : "ghost"}
+              size="sm"
+              px={isCompact ? 2 : undefined}
+              gap={1.5}
+              flexShrink={0}
+              onClick={toggleSplit}
+            >
+              <Columns2 size={15} />
+              {!isCompact && "分屏"}
+            </Button>
           )}
 
           {!overflowMargin && (
@@ -732,40 +714,21 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
                       </Box>
                     )}
                     {canEdit && overflowSplit && (
-                      <>
-                        <Menu.Item
-                          value="overflow-split"
-                          display="flex"
-                          alignItems="center"
-                          gap={2}
-                          fontSize="sm"
-                          px={2}
-                          py={1.5}
-                          borderRadius="6px"
-                          cursor="pointer"
-                          onClick={toggleSplit}
-                        >
-                          <Columns2 size={14} />
-                          {splitOpen ? "关闭分屏" : "分屏视图"}
-                        </Menu.Item>
-                        {splitOpen && (
-                          <Menu.Item
-                            value="overflow-diff"
-                            display="flex"
-                            alignItems="center"
-                            gap={2}
-                            fontSize="sm"
-                            px={2}
-                            py={1.5}
-                            borderRadius="6px"
-                            cursor="pointer"
-                            onClick={toggleDiff}
-                          >
-                            <GitCompareArrows size={14} />
-                            {diffOpen ? "关闭 Diff" : "打开 Diff"}
-                          </Menu.Item>
-                        )}
-                      </>
+                      <Menu.Item
+                        value="overflow-split"
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        fontSize="sm"
+                        px={2}
+                        py={1.5}
+                        borderRadius="6px"
+                        cursor="pointer"
+                        onClick={toggleSplit}
+                      >
+                        <Columns2 size={14} />
+                        {splitOpen ? "关闭分屏" : "分屏视图"}
+                      </Menu.Item>
                     )}
                     {overflowSettings && (
                       <Menu.Item

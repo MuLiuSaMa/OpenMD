@@ -866,12 +866,14 @@
   max-width: 100%;
   margin: 0 auto;
   padding: 24px clamp(12px, 3vw, 32px) 64px;
+  background: transparent;
 }
 .md-code-view .md-code-pre {
   margin: 0;
   padding: 20px 24px;
   border-radius: 10px;
-  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
+  background: transparent;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   white-space: pre-wrap;   /* 长行折行,避免横向滚动 */
@@ -890,6 +892,11 @@
 .md-code-view .md-src-heading {
   scroll-margin-top: 16px;
 }
+/* 代码视图背景与预览视图一致:透出同一层画布底色。 */
+.dark .md-code-view .md-code-pre,
+[data-theme="dark"] .md-code-view .md-code-pre {
+  background: transparent;
+}
 
 /* =========================================================
    编辑模式(代码视图):透明 textarea 与高亮层网格叠放。
@@ -903,7 +910,7 @@
   grid-area: 1 / 1;
 }
 .md-code-view .md-code-textarea {
-  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   margin: 0;
@@ -938,7 +945,7 @@
 .md-body h4[data-md-active="true"]::before,
 .md-body h5[data-md-active="true"]::before,
 .md-body h6[data-md-active="true"]::before {
-  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-weight: 400;
   font-size: 0.72em;
   color: #8c959f;
@@ -957,7 +964,7 @@
 .md-body b[data-md-inline-active="true"]::before,
 .md-body b[data-md-inline-active="true"]::after {
   content: "**";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-weight: 400;
   font-size: 0.85em;
   color: #8c959f;
@@ -967,7 +974,7 @@
 .md-body i[data-md-inline-active="true"]::before,
 .md-body i[data-md-inline-active="true"]::after {
   content: "*";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-style: normal;
   font-size: 0.85em;
   color: #8c959f;
@@ -977,7 +984,7 @@
 .md-body s[data-md-inline-active="true"]::before,
 .md-body s[data-md-inline-active="true"]::after {
   content: "~~";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   text-decoration: none;
   font-size: 0.85em;
   color: #8c959f;
@@ -985,18 +992,18 @@
 .md-body :not(pre) > code[data-md-inline-active="true"]::before,
 .md-body :not(pre) > code[data-md-inline-active="true"]::after {
   content: "`";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   color: #8c959f;
 }
 .md-body a[data-md-inline-active="true"]::before {
   content: "[";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-size: 0.85em;
   color: #8c959f;
 }
 .md-body a[data-md-inline-active="true"]::after {
   content: "](" attr(href) ")";
-  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
   font-size: 0.8em;
   color: #8c959f;
 }

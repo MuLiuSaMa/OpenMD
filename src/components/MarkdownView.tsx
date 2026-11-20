@@ -291,10 +291,13 @@ export function MarkdownView({
   tab,
   viewModeOverride,
   onViewModeChange,
+  hideViewToggle = false,
 }: {
   tab: Tab;
   viewModeOverride?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
+  /** 分屏时隐藏右上角的「预览/代码」悬浮切换框。 */
+  hideViewToggle?: boolean;
 }) {
   const { t } = useTranslation();
   const { fontSize, contentPadding, viewMode: globalViewMode, setViewMode: setGlobalViewMode } = useSettings();
@@ -1357,62 +1360,64 @@ export function MarkdownView({
   return (
     <Box flex={1} position="relative" display="flex" flexDirection="column" minW={0} minH={0}>
       {/* 「预览/代码」悬浮在内容区右上角,不单独占一行(编辑/保存已移入顶栏)。 */}
-      <Box
-        position="absolute"
-        top="8px"
-        right="16px"
-        zIndex={40}
-        borderRadius="8px"
-        borderWidth="1px"
-        borderColor="border.subtle"
-        bg="bg.panel"
-        boxShadow="sm"
-        backdropFilter="blur(8px)"
-        display="flex"
-        alignItems="center"
-        p="2px"
-      >
-        <SegmentGroup.Root
-          size="xs"
-          value={viewMode}
-          onValueChange={(e) => {
-            const next = e.value as ViewMode;
-            withViewTransition(() => setViewMode(next));
-          }}
-          aria-label={t("viewer.toolbar.switchView")}
+      {!hideViewToggle && (
+        <Box
+          position="absolute"
+          top="8px"
+          right="16px"
+          zIndex={40}
+          borderRadius="8px"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.panel"
+          boxShadow="sm"
+          backdropFilter="blur(8px)"
+          display="flex"
+          alignItems="center"
+          p="2px"
         >
-          <SegmentGroup.Indicator />
-          <SegmentGroup.Item value="preview">
-            <SegmentGroup.ItemHiddenInput />
-            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-              <Eye size={13} />
-              {t("viewer.toolbar.preview")}
-            </SegmentGroup.ItemText>
-          </SegmentGroup.Item>
-          <SegmentGroup.Item value="code">
-            <SegmentGroup.ItemHiddenInput />
-            <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
-              <Code2 size={13} />
-              {t("viewer.toolbar.code")}
-            </SegmentGroup.ItemText>
-          </SegmentGroup.Item>
-        </SegmentGroup.Root>
-        {isMarp && viewMode === "preview" && (
-          <Button
-            aria-label={t("viewer.toolbar.present")}
-            title={t("viewer.toolbar.present")}
+          <SegmentGroup.Root
             size="xs"
-            variant="ghost"
-            gap={1}
-            px={2}
-            ms={1}
-            onClick={() => setPresenting(true)}
+            value={viewMode}
+            onValueChange={(e) => {
+              const next = e.value as ViewMode;
+              withViewTransition(() => setViewMode(next));
+            }}
+            aria-label={t("viewer.toolbar.switchView")}
           >
-            <Play size={13} />
-            {t("viewer.toolbar.present")}
-          </Button>
-        )}
-      </Box>
+            <SegmentGroup.Indicator />
+            <SegmentGroup.Item value="preview">
+              <SegmentGroup.ItemHiddenInput />
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+                <Eye size={13} />
+                {t("viewer.toolbar.preview")}
+              </SegmentGroup.ItemText>
+            </SegmentGroup.Item>
+            <SegmentGroup.Item value="code">
+              <SegmentGroup.ItemHiddenInput />
+              <SegmentGroup.ItemText display="inline-flex" alignItems="center" gap={1.5}>
+                <Code2 size={13} />
+                {t("viewer.toolbar.code")}
+              </SegmentGroup.ItemText>
+            </SegmentGroup.Item>
+          </SegmentGroup.Root>
+          {isMarp && viewMode === "preview" && (
+            <Button
+              aria-label={t("viewer.toolbar.present")}
+              title={t("viewer.toolbar.present")}
+              size="xs"
+              variant="ghost"
+              gap={1}
+              px={2}
+              ms={1}
+              onClick={() => setPresenting(true)}
+            >
+              <Play size={13} />
+              {t("viewer.toolbar.present")}
+            </Button>
+          )}
+        </Box>
+      )}
       <Box flex={1} position="relative" display="flex" minW={0} minH={0}>
         <Box
           ref={scrollRef}
