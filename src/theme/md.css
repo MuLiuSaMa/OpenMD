@@ -22,8 +22,8 @@
 
 .md-body {
   color: #1f2328;
-  font-family: "MiSans", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI",
-    "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  font-family: var(--openmd-preview-font, "MiSans", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI",
+    "Microsoft YaHei UI", "Microsoft YaHei", sans-serif);
   font-size: var(--md-font-size, 17px);
   line-height: 1.75;
   word-wrap: break-word;
@@ -873,7 +873,7 @@
   padding: 20px 24px;
   border-radius: 10px;
   background: transparent;
-  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
+  font-family: var(--openmd-code-font, "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace);
   font-size: 13.5px;
   line-height: 1.65;
   white-space: pre-wrap;   /* 长行折行,避免横向滚动 */
@@ -910,7 +910,7 @@
   grid-area: 1 / 1;
 }
 .md-code-view .md-code-textarea {
-  font-family: "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace;
+  font-family: var(--openmd-code-font, "Cascadia Code", "Cascadia Mono", Consolas, "JetBrains Mono", "Courier New", monospace);
   font-size: 13.5px;
   line-height: 1.65;
   margin: 0;

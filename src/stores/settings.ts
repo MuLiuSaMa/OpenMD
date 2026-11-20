@@ -39,6 +39,16 @@ interface SettingsState {
   /** 关闭窗口行为(勾选"不再提醒"后由关闭对话框写入)。 */
   closeAction: CloseAction;
   language: Language;
+  /** 界面字体（空字符串表示默认字体栈）。 */
+  uiFont: string;
+  /** 预览模式中文字体（空字符串表示默认字体栈）。 */
+  previewZhFont: string;
+  /** 预览模式英文字体（空字符串表示默认字体栈）。 */
+  previewEnFont: string;
+  /** 代码模式中文字体（空字符串表示默认字体栈）。 */
+  codeZhFont: string;
+  /** 代码模式英文字体（空字符串表示默认字体栈）。 */
+  codeEnFont: string;
   setFontSize: (n: number) => void;
   toggleToc: () => void;
   setTocOpen: (open: boolean) => void;
@@ -49,6 +59,12 @@ interface SettingsState {
   setViewMode: (v: ViewMode) => void;
   setCloseAction: (v: CloseAction) => void;
   setLanguage: (l: Language) => void;
+  setUiFont: (font: string) => void;
+  setPreviewZhFont: (font: string) => void;
+  setPreviewEnFont: (font: string) => void;
+  setCodeZhFont: (font: string) => void;
+  setCodeEnFont: (font: string) => void;
+  resetFonts: () => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -63,6 +79,11 @@ export const useSettings = create<SettingsState>()(
       viewMode: "preview",
       closeAction: "ask",
       language: "auto",
+      uiFont: "",
+      previewZhFont: "",
+      previewEnFont: "",
+      codeZhFont: "",
+      codeEnFont: "",
       // 字号滑动过渡在 MarkdownView 的 font-size transition 中实现。
       setFontSize: (n) => set({ fontSize: Math.min(28, Math.max(13, n)) }),
       toggleToc: () => set((s) => ({ tocOpen: !s.tocOpen })),
@@ -78,6 +99,19 @@ export const useSettings = create<SettingsState>()(
       setViewMode: (v) => set({ viewMode: v }),
       setCloseAction: (v) => set({ closeAction: v }),
       setLanguage: (l) => set({ language: l }),
+      setUiFont: (uiFont) => set({ uiFont: uiFont.trim() }),
+      setPreviewZhFont: (previewZhFont) => set({ previewZhFont: previewZhFont.trim() }),
+      setPreviewEnFont: (previewEnFont) => set({ previewEnFont: previewEnFont.trim() }),
+      setCodeZhFont: (codeZhFont) => set({ codeZhFont: codeZhFont.trim() }),
+      setCodeEnFont: (codeEnFont) => set({ codeEnFont: codeEnFont.trim() }),
+      resetFonts: () =>
+        set({
+          uiFont: "",
+          previewZhFont: "",
+          previewEnFont: "",
+          codeZhFont: "",
+          codeEnFont: "",
+        }),
     }),
     { name: "openmd-settings" },
   ),
