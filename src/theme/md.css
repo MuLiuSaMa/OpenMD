@@ -865,13 +865,13 @@
 .md-code-view {
   max-width: 100%;
   margin: 0 auto;
-  padding: 24px 32px 64px;
+  padding: 24px clamp(12px, 3vw, 32px) 64px;
 }
 .md-code-view .md-code-pre {
   margin: 0;
   padding: 20px 24px;
   border-radius: 10px;
-  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   white-space: pre-wrap;   /* 长行折行,避免横向滚动 */
@@ -903,7 +903,7 @@
   grid-area: 1 / 1;
 }
 .md-code-view .md-code-textarea {
-  font-family: "Cascadia Code", "Cascadia Mono", "JetBrains Mono", Consolas, "Courier New", monospace;
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", "微软雅黑", monospace;
   font-size: 13.5px;
   line-height: 1.65;
   margin: 0;
@@ -926,8 +926,77 @@
   caret-color: #e6e6e6;
 }
 
-/* 编辑模式下的预览:给一块可编辑区域一个克制的视觉提示。 */
+/* 统一所见即所得编辑区:保持文档阅读观感,不加常驻边框或聚焦轮廓。 */
 .md-body[contenteditable="true"] {
-  box-shadow: 0 0 0 1px var(--md-edit-ring, rgba(127, 127, 127, 0.25));
-  border-radius: 10px;
+  outline: none;
+}
+
+/* MarkText 式光标上下文语法显隐：光标进入时展开 Markdown 标记，离开时隐藏。 */
+.md-body h1[data-md-active="true"]::before,
+.md-body h2[data-md-active="true"]::before,
+.md-body h3[data-md-active="true"]::before,
+.md-body h4[data-md-active="true"]::before,
+.md-body h5[data-md-active="true"]::before,
+.md-body h6[data-md-active="true"]::before {
+  font-family: "JetBrains Mono", "JetbrainsMono", "Microsoft YaHei", monospace;
+  font-weight: 400;
+  font-size: 0.72em;
+  color: #8c959f;
+  margin-right: 0.15em;
+  user-select: none;
+}
+.md-body h1[data-md-active="true"]::before { content: "# "; }
+.md-body h2[data-md-active="true"]::before { content: "## "; }
+.md-body h3[data-md-active="true"]::before { content: "### "; }
+.md-body h4[data-md-active="true"]::before { content: "#### "; }
+.md-body h5[data-md-active="true"]::before { content: "##### "; }
+.md-body h6[data-md-active="true"]::before { content: "###### "; }
+
+.md-body strong[data-md-inline-active="true"]::before,
+.md-body strong[data-md-inline-active="true"]::after,
+.md-body b[data-md-inline-active="true"]::before,
+.md-body b[data-md-inline-active="true"]::after {
+  content: "**";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-weight: 400;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body em[data-md-inline-active="true"]::before,
+.md-body em[data-md-inline-active="true"]::after,
+.md-body i[data-md-inline-active="true"]::before,
+.md-body i[data-md-inline-active="true"]::after {
+  content: "*";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-style: normal;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body del[data-md-inline-active="true"]::before,
+.md-body del[data-md-inline-active="true"]::after,
+.md-body s[data-md-inline-active="true"]::before,
+.md-body s[data-md-inline-active="true"]::after {
+  content: "~~";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  text-decoration: none;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body :not(pre) > code[data-md-inline-active="true"]::before,
+.md-body :not(pre) > code[data-md-inline-active="true"]::after {
+  content: "`";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  color: #8c959f;
+}
+.md-body a[data-md-inline-active="true"]::before {
+  content: "[";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-size: 0.85em;
+  color: #8c959f;
+}
+.md-body a[data-md-inline-active="true"]::after {
+  content: "](" attr(href) ")";
+  font-family: "JetBrains Mono", "JetbrainsMono", monospace;
+  font-size: 0.8em;
+  color: #8c959f;
 }

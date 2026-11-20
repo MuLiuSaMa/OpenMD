@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Alert, Box, Button, Flex, SegmentGroup } from "@chakra-ui/react";
 import {
+  Bold,
   Code2,
   ClipboardPaste,
   Copy,
@@ -8,11 +9,14 @@ import {
   ExternalLink,
   Image as ImageIcon,
   ImagePlus,
+  Italic,
   Link2,
   Play,
   Redo2,
+  RemoveFormatting,
   Replace,
   Scissors,
+  Strikethrough,
   Undo2,
 } from "lucide-react";
 import i18n from "i18next";
@@ -30,8 +34,12 @@ import { articleToMarkdown } from "../renderer/backconvert";
 import { renderRichBlocks } from "../renderer/richBlocks";
 import { applyLinePatches, collectPatches, patchFromBlock, shiftForLine } from "../renderer/previewEdit";
 import {
+  syncActiveSyntaxMarkers,
+  tryBlockInputRule,
+  tryInlineInputRule,
+} from "../renderer/liveWysiwyg";
+import {
   copyImage,
-  copySelection,
   isLocalImageSrc,
   readClipboardText,
   selectionText,
@@ -279,16 +287,26 @@ function splitHighlightedLines(html: string): string[] {
   return lines;
 }
 
-export function MarkdownView({ tab }: { tab: Tab }) {
+export function MarkdownView({
+  tab,
+  viewModeOverride,
+  onViewModeChange,
+}: {
+  tab: Tab;
+  viewModeOverride?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+}) {
   const { t } = useTranslation();
-  const { fontSize, contentPadding, viewMode, setViewMode, editMode } = useSettings();
+  const { fontSize, contentPadding, viewMode: globalViewMode, setViewMode: setGlobalViewMode } = useSettings();
+  const viewMode = viewModeOverride ?? globalViewMode;
+  const setViewMode = onViewModeChange ?? setGlobalViewMode;
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
   const { setEntries, setActive } = useToc();
   const setScrollInStore = useTabs((s) => s.setScroll);
   const updateDraft = useTabs((s) => s.updateDraft);
 
-  const editing = editMode && tab.path !== null;
+  const editing = tab.path !== null;
   const [presenting, setPresenting] = useState(false);
 
   const baseDir = tab.path ? dirnameOf(tab.path) : undefined;
@@ -351,7 +369,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅在边界时刻同步
-  }, [tab.content, tab.id, viewMode, editMode]);
+  }, [tab.content, tab.id, viewMode]);
   const { html, assetPaths, frontmatter, isMarp } = useMemo(() => {
     if (tab.error) {
       return { html: "", assetPaths: [] as string[], frontmatter: null, isMarp: false };
@@ -495,12 +513,12 @@ export function MarkdownView({ tab }: { tab: Tab }) {
 
     // Link handling: external URLs → system browser; local paths → in-app
     // (markdown) or system (everything else).
-    // Wiki 链接:按工作区解析目标后直接打开。
+    // Wiki 链接:按工作区解析目标后直接打开(Ctrl/Cmd + 点击打开,普通点击放置光标编辑)。
     article.querySelectorAll("a.wiki-link").forEach((el) => {
       const link = el as HTMLAnchorElement;
       link.addEventListener("click", async (e) => {
         e.preventDefault();
-        if (editMode) return;
+        if (!(e.ctrlKey || e.metaKey)) return;
         const target = link.getAttribute("data-wiki-target");
         const workspaceRoot = useWorkspace.getState().root;
         if (!target || !workspaceRoot || !tab.path) return;
@@ -519,8 +537,8 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       if (!href || href.startsWith("#")) return;
       link.addEventListener("click", (e) => {
         e.preventDefault();
-        // 编辑模式下点击是为了放置光标,不打开链接。
-        if (editMode) return;
+        // 统一编辑模式下,普通点击放置光标,Ctrl/Cmd + 点击打开链接。
+        if (!(e.ctrlKey || e.metaKey)) return;
         void openHref(href);
       });
     });
@@ -530,7 +548,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       // 卸载(切走/回首页)时清空目录;重挂载会立即重新提取
       setEntries([]);
     };
-  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, editMode, isDark, assetPaths, setEntries, setActive, openHref]);
+  }, [viewMode, html, codeHtml, sourceHeadings, tab.path, isDark, assetPaths, setEntries, setActive, openHref]);
 
   // 预览编辑:contentEditable 的变更 → 段落级映射回源码草稿。预览 DOM 不重渲染,
   // 光标不丢;400ms 去抖把同一块的多条变更合并成一次替换。行号在 patch 间会漂移,
@@ -724,6 +742,93 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       flushPreviewEdits(); // 切视图/卸载前把未落盘的编辑写进草稿
     };
   }, [editing, viewMode, tab.id, tab.path, schedulePreviewPatch, flushPreviewEdits]);
+
+  // MarkText 式选区浮动格式栏 + 光标上下文语法显隐
+  const [selectionBar, setSelectionBar] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!editing || viewMode !== "preview") {
+      setSelectionBar(null);
+      return;
+    }
+    const onSelectionChange = () => {
+      const article = articleRef.current;
+      if (!article) return;
+      syncActiveSyntaxMarkers(article);
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+        setSelectionBar(null);
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      if (!article.contains(range.commonAncestorContainer) || !sel.toString().trim()) {
+        setSelectionBar(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) {
+        setSelectionBar(null);
+        return;
+      }
+      setSelectionBar({
+        x: Math.max(120, Math.min(window.innerWidth - 120, rect.left + rect.width / 2)),
+        y: Math.max(52, rect.top - 42),
+      });
+    };
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+  }, [editing, viewMode]);
+
+  const onArticleInput = useCallback(() => {
+    const article = articleRef.current;
+    if (!article || !editing || viewMode !== "preview") return;
+    const blockChanged = tryBlockInputRule(article, "input");
+    if (!blockChanged) {
+      tryInlineInputRule(article);
+    } else {
+      setEntries(extractToc(article));
+    }
+    syncActiveSyntaxMarkers(article);
+  }, [editing, viewMode, setEntries]);
+
+  const onArticleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLElement>) => {
+      if (!editing || viewMode !== "preview") return;
+      const article = articleRef.current;
+      if (!article) return;
+      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+        const converted = tryBlockInputRule(article, "enter");
+        if (converted) {
+          e.preventDefault();
+          syncActiveSyntaxMarkers(article);
+        }
+      }
+    },
+    [editing, viewMode],
+  );
+
+  const toggleInlineCodeSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    const parentCode = (
+      range.commonAncestorContainer instanceof Element
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer.parentElement
+    )?.closest("code");
+    if (parentCode && !parentCode.closest("pre")) {
+      const text = document.createTextNode(parentCode.textContent ?? "");
+      parentCode.replaceWith(text);
+      return;
+    }
+    const code = document.createElement("code");
+    code.textContent = range.toString();
+    range.deleteContents();
+    range.insertNode(code);
+    sel.removeAllRanges();
+    const next = document.createRange();
+    next.selectNodeContents(code);
+    sel.addRange(next);
+  }, []);
 
   // ---- 内容区右键菜单(替代 WebView2 默认菜单)与图片编辑 ----
   const [menu, setMenu] = useState<{ x: number; y: number; target: Element } | null>(null);
@@ -941,60 +1046,6 @@ export function MarkdownView({ tab }: { tab: Tab }) {
       const link = target.closest("a");
       const sel = selectionText();
 
-      if (!editing) {
-        const entries: MenuEntry[] = [
-          {
-            type: "item",
-            label: t("viewer.menu.copy"),
-            icon: <Copy size={14} />,
-            disabled: sel.length === 0,
-            onClick: () => void copySelection().catch(() => {}),
-          },
-        ];
-        if (img) {
-          entries.push(
-            {
-              type: "item",
-              label: t("viewer.menu.copyImage"),
-              icon: <ImageIcon size={14} />,
-              // 远程图受 CORS 限制,复制到剪贴板大概率失败,只留"复制地址"。
-              disabled: !isLocalImageSrc(img.currentSrc || img.src),
-              onClick: () => void copyImage(img).catch((e) => console.warn("复制图片失败:", e)),
-            },
-            {
-              type: "item",
-              label: t("viewer.menu.copyImageAddress"),
-              icon: <Link2 size={14} />,
-              onClick: () =>
-                void navigator.clipboard
-                  .writeText(img.getAttribute("data-original-src") ?? img.src)
-                  .catch(() => {}),
-            },
-          );
-        }
-        const href = link?.getAttribute("href");
-        if (href) {
-          entries.push({
-            type: "item",
-            label: t("viewer.menu.openLink"),
-            icon: <ExternalLink size={14} />,
-            onClick: () => void openHref(href),
-          });
-        }
-        entries.push(
-          { type: "sep" },
-          {
-            type: "item",
-            label: t("viewer.menu.selectAll"),
-            onClick: () => {
-              const scope = articleRef.current ?? target;
-              window.getSelection()?.selectAllChildren(scope);
-            },
-          },
-        );
-        return entries;
-      }
-
       if (viewMode === "code") {
         const ta = codeTextareaRef.current;
         const hasSel = !!ta && ta.selectionStart < ta.selectionEnd;
@@ -1014,7 +1065,7 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         ];
       }
 
-      // 编辑开 + 预览
+      // 统一所见即所得视图(参考 MarkText 二合一)
       const entries: MenuEntry[] = [
         { type: "item", label: t("viewer.menu.undo"), icon: <Undo2 size={14} />, onClick: menuUndo },
         { type: "item", label: t("viewer.menu.redo"), icon: <Redo2 size={14} />, onClick: menuRedo },
@@ -1045,6 +1096,15 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         { type: "sep" },
         { type: "item", label: t("viewer.menu.insertImage"), icon: <ImagePlus size={14} />, onClick: () => void insertImageAtCaret() },
       ];
+      const href = link?.getAttribute("href");
+      if (href) {
+        entries.push({
+          type: "item",
+          label: t("viewer.menu.openLink"),
+          icon: <ExternalLink size={14} />,
+          onClick: () => void openHref(href),
+        });
+      }
       if (sel.length > 0) {
         // 选中文本:排版(加粗进浏览器撤销栈;字号 span / 对齐 align 由段落映射回源码)。
         // 选区起始块的对齐状态用于高亮当前布局;起始处计算字号作为步进器初值。
@@ -1103,7 +1163,25 @@ export function MarkdownView({ tab }: { tab: Tab }) {
         );
       }
       if (img) {
-        entries.push({ type: "item", label: t("viewer.menu.replaceImage"), icon: <Replace size={14} />, onClick: () => void replaceImage(img) });
+        entries.push(
+          {
+            type: "item",
+            label: t("viewer.menu.copyImage"),
+            icon: <ImageIcon size={14} />,
+            disabled: !isLocalImageSrc(img.currentSrc || img.src),
+            onClick: () => void copyImage(img).catch((e) => console.warn("复制图片失败:", e)),
+          },
+          {
+            type: "item",
+            label: t("viewer.menu.copyImageAddress"),
+            icon: <Link2 size={14} />,
+            onClick: () =>
+              void navigator.clipboard
+                .writeText(img.getAttribute("data-original-src") ?? img.src)
+                .catch(() => {}),
+          },
+          { type: "item", label: t("viewer.menu.replaceImage"), icon: <Replace size={14} />, onClick: () => void replaceImage(img) },
+        );
         entries.push({ type: "sep" });
         const wAttr = img.getAttribute("width");
         const natural = img.naturalWidth || 0;
@@ -1121,6 +1199,17 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           },
         );
       }
+      entries.push(
+        { type: "sep" },
+        {
+          type: "item",
+          label: t("viewer.menu.selectAll"),
+          onClick: () => {
+            const scope = articleRef.current ?? target;
+            window.getSelection()?.selectAllChildren(scope);
+          },
+        },
+      );
       return entries;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 菜单条目依赖众多动作回调,均为稳定 useCallback
@@ -1376,11 +1465,13 @@ export function MarkdownView({ tab }: { tab: Tab }) {
                 contentEditable={editing || undefined}
                 suppressContentEditableWarning
                 onMouseOver={onArticleMouseOver}
+                onInput={onArticleInput}
+                onKeyDown={onArticleKeyDown}
                 style={{
-                  // 内容宽度只由左右边距决定:边距 0 = 铺满,调大即收窄阅读栏,连续无跳变。
+                  // 内容宽度随窗口自适应:宽屏按边距收窄阅读栏,窄屏自动收缩左右边距保证正文可读。
                   maxWidth: "100%",
                   margin: "0 auto",
-                  padding: `32px ${contentPadding}px 64px`,
+                  padding: `32px min(${contentPadding}px, max(20px, calc(50% - 280px))) 64px`,
                   fontSize,
                   ["--md-font-size" as string]: `${fontSize}px`,
                   transition: "font-size 0.2s ease, padding 0.15s ease",
@@ -1398,6 +1489,75 @@ export function MarkdownView({ tab }: { tab: Tab }) {
           path={tab.path}
           onExit={() => setPresenting(false)}
         />
+      )}
+      {/* 选区浮动格式栏（MarkText 风格）：选中文本时浮现加粗/斜体/删除线/行内代码/清除格式 */}
+      {selectionBar && editing && viewMode === "preview" && (
+        <Flex
+          position="fixed"
+          zIndex={60}
+          style={{
+            left: `${selectionBar.x}px`,
+            top: `${selectionBar.y}px`,
+            transform: "translateX(-50%)",
+          }}
+          alignItems="center"
+          gap={0.5}
+          px={1.5}
+          py={1}
+          borderRadius="8px"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          bg="bg.panel"
+          boxShadow="md"
+          backdropFilter="blur(8px)"
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title={t("viewer.menu.bold")}
+            onClick={() => document.execCommand("bold")}
+          >
+            <Bold size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Italic"
+            onClick={() => document.execCommand("italic")}
+          >
+            <Italic size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Strikethrough"
+            onClick={() => document.execCommand("strikeThrough")}
+          >
+            <Strikethrough size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Inline Code"
+            onClick={toggleInlineCodeSelection}
+          >
+            <Code2 size={13} />
+          </Button>
+          <Button
+            size="2xs"
+            variant="ghost"
+            px={1.5}
+            title="Clear Format"
+            onClick={() => document.execCommand("removeFormat")}
+          >
+            <RemoveFormatting size={13} />
+          </Button>
+        </Flex>
       )}
       {/* 图片拖拽手柄:视口定位在图片右下角,拖动实时调宽。 */}
       {resizeHandle && editing && viewMode === "preview" && (

@@ -15,13 +15,15 @@ import {
 import { useTheme } from "next-themes";
 import {
   ChevronDown,
+  Columns2,
   FileText,
   FolderOpen,
   FolderTree,
+  GitCompareArrows,
   Minus,
   Moon,
+  MoreHorizontal,
   PanelLeft,
-  Pencil,
   Plus,
   Save,
   Settings,
@@ -29,9 +31,11 @@ import {
   Sun,
 } from "lucide-react";
 import { useSettings, MAX_CONTENT_PADDING } from "../stores/settings";
+import { useSplit } from "../stores/split";
 import { useWorkspace } from "../stores/workspace";
 import { openFolderDialog, openFileDialog } from "../tauri/api";
 import { openStandaloneFiles } from "../lib/openStandaloneFiles";
+import { useWindowWidth } from "../lib/useWindowWidth";
 import { isDirty, useTabs } from "../stores/tabs";
 import { withViewTransition } from "../utils/viewTransition";
 import { IS_MACOS } from "../utils/platform";
@@ -70,9 +74,31 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
     setSidebarTab,
     contentPadding,
     setContentPadding,
-    editMode,
-    toggleEditMode,
   } = useSettings();
+  const windowWidth = useWindowWidth();
+  const isCompact = windowWidth < 900;
+  const isVeryNarrow = windowWidth < 700;
+  const isUltraNarrow = windowWidth < 540;
+
+  const { splitOpen, diffOpen, toggleSplit, toggleDiff } = useSplit();
+
+  // 窗口继续缩小时，将低优先级顶栏功能依次收纳进「⋯」溢出菜单。
+  const overflowFontSize = windowWidth < 660;
+  const overflowMargin = windowWidth < 600;
+  const overflowSplit = windowWidth < 530;
+  const overflowOpen = windowWidth < 500;
+  const overflowSettings = windowWidth < 460;
+  const overflowTheme = windowWidth < 430;
+  const overflowSave = windowWidth < 400;
+  const hasOverflow =
+    overflowFontSize ||
+    overflowMargin ||
+    overflowSplit ||
+    overflowOpen ||
+    overflowSettings ||
+    overflowTheme ||
+    overflowSave;
+  const { setTheme } = useTheme();
   const openPaths = useTabs((s) => s.openPath);
   const activeTab = useTabs((s) => s.tabs.find((x) => x.id === s.activeId));
   const saveTab = useTabs((s) => s.saveTab);
@@ -228,8 +254,19 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
       alignItems="center"
       data-tauri-drag-region=""
     >
-      <Grid templateColumns="1fr auto 1fr" w="100%" alignItems="center" data-tauri-drag-region="">
-        <Box justifySelf="start" display="flex" alignItems="center" data-tauri-drag-region="">
+      <Grid
+        templateColumns={isVeryNarrow ? "auto minmax(0, 1fr) auto" : "1fr auto 1fr"}
+        w="100%"
+        alignItems="center"
+        gap={isVeryNarrow ? 1 : 2}
+        data-tauri-drag-region=""
+      >
+        <Box
+          justifySelf="start"
+          display={isUltraNarrow ? "none" : "flex"}
+          alignItems="center"
+          data-tauri-drag-region=""
+        >
           {/* wordmark PNG 上下各有约34%透明留白(字形仅占30%高度),
               用固定高度容器 + 负 margin 裁剪到字形本身,栏高保持紧凑。 */}
           <Box h="18px" overflow="hidden" display="flex" flexShrink={0} data-tauri-drag-region="">
@@ -249,275 +286,528 @@ export function TitleBar({ onOpenError }: { onOpenError?: (msg: string) => void 
           </Box>
         </Box>
 
-        <HStack gap={1} justifySelf="center" data-tauri-drag-region="">
-          {/* 编辑/保存:从正文区移到顶栏「打开」左侧,作用于当前文档。 */}
-          {canEdit && (
-            <>
-              <Button
-                aria-label={t("viewer.toolbar.toggleEdit")}
-                title={t("viewer.toolbar.editTitle")}
-                variant="ghost"
-                size="sm"
-                gap={1.5}
-                bg={editMode ? "fg" : "transparent"}
-                color={editMode ? "bg" : "fg"}
-                _hover={{ bg: editMode ? "fg.muted" : "bg.subtle" }}
-                onClick={toggleEditMode}
-              >
-                <Pencil size={15} />
-                {t("viewer.toolbar.edit")}
-              </Button>
-              <Button
-                aria-label={t("viewer.toolbar.saveShortcut")}
-                title={t("viewer.toolbar.saveShortcut")}
-                variant="ghost"
-                size="sm"
-                gap={1.5}
-                disabled={!dirty}
-                onClick={() => activeTab && void saveTab(activeTab.id)}
-              >
-                <Save size={15} />
-                {t("viewer.toolbar.save")}
-              </Button>
-            </>
+        <HStack
+          gap={isCompact ? 0.5 : 1}
+          justifySelf="center"
+          minW={0}
+          flexShrink={1}
+          data-tauri-drag-region=""
+        >
+          {/* 保存:作用于当前文档。 */}
+          {canEdit && !overflowSave && (
+            <Button
+              aria-label={t("viewer.toolbar.saveShortcut")}
+              title={t("viewer.toolbar.saveShortcut")}
+              variant="ghost"
+              size="sm"
+              px={isCompact ? 2 : undefined}
+              gap={1.5}
+              flexShrink={0}
+              disabled={!dirty}
+              onClick={() => activeTab && void saveTab(activeTab.id)}
+            >
+              <Save size={15} />
+              {!isCompact && t("viewer.toolbar.save")}
+            </Button>
           )}
-          <Menu.Root
-            open={openMenu}
-            onOpenChange={(e) => setOpenMenu(e.open)}
-            positioning={{ placement: "bottom-start" }}
-          >
-            <Menu.Trigger asChild>
-              <Button
-                aria-label={t("shell.open")}
-                title={t("shell.open")}
-                variant="ghost"
-                size="sm"
-                gap={1.5}
-                onPointerEnter={showOpenMenu}
-                onPointerLeave={scheduleOpenMenuClose}
-              >
-                <FolderOpen size={15} />
-                {t("shell.open")}
-                <ChevronDown size={12} opacity={0.55} />
-              </Button>
-            </Menu.Trigger>
-            <Portal>
-              <Menu.Positioner zIndex={1000}>
-                <Menu.Content
-                  minW="160px"
-                  bg="bg"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  borderRadius="10px"
-                  boxShadow="md"
-                  overflow="hidden"
-                  p={1}
+          {!overflowOpen && (
+            <Menu.Root
+              open={openMenu}
+              onOpenChange={(e) => setOpenMenu(e.open)}
+              positioning={{ placement: "bottom-start" }}
+            >
+              <Menu.Trigger asChild>
+                <Button
+                  aria-label={t("shell.open")}
+                  title={t("shell.open")}
+                  variant="ghost"
+                  size="sm"
+                  px={isCompact ? 2 : undefined}
+                  gap={isCompact ? 1 : 1.5}
+                  flexShrink={0}
                   onPointerEnter={showOpenMenu}
                   onPointerLeave={scheduleOpenMenuClose}
                 >
-                  <Menu.Item
-                    value="open-file"
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    fontSize="sm"
-                    px={2}
-                    py={1.5}
-                    borderRadius="6px"
-                    cursor="pointer"
-                    onClick={() => void handleOpen()}
+                  <FolderOpen size={15} />
+                  {!isCompact && t("shell.open")}
+                  <ChevronDown size={12} opacity={0.55} />
+                </Button>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner zIndex={1000}>
+                  <Menu.Content
+                    minW="160px"
+                    bg="bg"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    borderRadius="10px"
+                    boxShadow="md"
+                    overflow="hidden"
+                    p={1}
+                    onPointerEnter={showOpenMenu}
+                    onPointerLeave={scheduleOpenMenuClose}
                   >
-                    <FileText size={14} />
-                    {t("shell.openFile")}
-                  </Menu.Item>
-                  <Menu.Item
-                    value="open-folder"
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                    fontSize="sm"
-                    px={2}
-                    py={1.5}
-                    borderRadius="6px"
-                    cursor="pointer"
-                    onClick={() => void handleWorkspace()}
-                  >
-                    <FolderTree size={14} />
-                    {t("shell.openFolder")}
-                  </Menu.Item>
-                </Menu.Content>
-              </Menu.Positioner>
-            </Portal>
-          </Menu.Root>
+                    <Menu.Item
+                      value="open-file"
+                      display="flex"
+                      alignItems="center"
+                      gap={2}
+                      fontSize="sm"
+                      px={2}
+                      py={1.5}
+                      borderRadius="6px"
+                      cursor="pointer"
+                      onClick={() => void handleOpen()}
+                    >
+                      <FileText size={14} />
+                      {t("shell.openFile")}
+                    </Menu.Item>
+                    <Menu.Item
+                      value="open-folder"
+                      display="flex"
+                      alignItems="center"
+                      gap={2}
+                      fontSize="sm"
+                      px={2}
+                      py={1.5}
+                      borderRadius="6px"
+                      cursor="pointer"
+                      onClick={() => void handleWorkspace()}
+                    >
+                      <FolderTree size={14} />
+                      {t("shell.openFolder")}
+                    </Menu.Item>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+          )}
 
-          <IconButton
-            aria-label={t("shell.decreaseFontSize")}
-            title={t("shell.decreaseFontSizeShortcut")}
-            variant="ghost"
-            size="sm"
-            onClick={() => setFontSize(fontSize - 1)}
-          >
-            <Minus size={15} />
-          </IconButton>
-          <Input
-            type="number"
-            min={13}
-            max={28}
-            value={sizeDraft}
-            onChange={(e) => setSizeDraft(e.target.value)}
-            onBlur={commitSize}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-            aria-label={t("shell.fontSize")}
-            title={t("shell.fontSizeInputTitle")}
-            w="44px"
-            h="26px"
-            size="xs"
-            px={0}
-            textAlign="center"
-            borderRadius="6px"
-            bg="bg.subtle"
-            borderColor="transparent"
-            focusRing="none"
-            _hover={{ borderColor: "fg.muted" }}
-            _focusVisible={{ borderColor: "fg.muted" }}
-            css={{
-              "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
-                WebkitAppearance: "none",
-                margin: 0,
-              },
-              MozAppearance: "textfield",
-            }}
-          />
-          <IconButton
-            aria-label={t("shell.increaseFontSize")}
-            title={t("shell.increaseFontSizeShortcut")}
-            variant="ghost"
-            size="sm"
-            onClick={() => setFontSize(fontSize + 1)}
-          >
-            <Plus size={15} />
-          </IconButton>
+          {!overflowFontSize && (
+            <>
+              <IconButton
+                aria-label={t("shell.decreaseFontSize")}
+                title={t("shell.decreaseFontSizeShortcut")}
+                variant="ghost"
+                size="sm"
+                onClick={() => setFontSize(fontSize - 1)}
+              >
+                <Minus size={15} />
+              </IconButton>
+              <Input
+                type="number"
+                min={13}
+                max={28}
+                value={sizeDraft}
+                onChange={(e) => setSizeDraft(e.target.value)}
+                onBlur={commitSize}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
+                aria-label={t("shell.fontSize")}
+                title={t("shell.fontSizeInputTitle")}
+                w="44px"
+                h="26px"
+                size="xs"
+                px={0}
+                textAlign="center"
+                borderRadius="6px"
+                bg="bg.subtle"
+                borderColor="transparent"
+                focusRing="none"
+                _hover={{ borderColor: "fg.muted" }}
+                _focusVisible={{ borderColor: "fg.muted" }}
+                css={{
+                  "&::-webkit-outer-spin-button, &::-webkit-inner-spin-button": {
+                    WebkitAppearance: "none",
+                    margin: 0,
+                  },
+                  MozAppearance: "textfield",
+                }}
+              />
+              <IconButton
+                aria-label={t("shell.increaseFontSize")}
+                title={t("shell.increaseFontSizeShortcut")}
+                variant="ghost"
+                size="sm"
+                onClick={() => setFontSize(fontSize + 1)}
+              >
+                <Plus size={15} />
+              </IconButton>
+            </>
+          )}
 
           <Button
             aria-label={t("shell.tocBar")}
             title={t("shell.tocBarShortcut")}
             variant={tocShown ? "subtle" : "ghost"}
             size="sm"
+            px={isCompact ? 2 : undefined}
             gap={1.5}
+            flexShrink={0}
             onClick={handleTocButton}
           >
             <PanelLeft size={15} />
-            {t("shell.toc")}
+            {!isCompact && t("shell.toc")}
           </Button>
 
-          <Box
-            ref={paddingWrapRef}
-            position="relative"
-            display="flex"
-            alignItems="center"
-            onPointerEnter={showPaddingPanel}
-            onPointerLeave={handlePaddingLeave}
-          >
+          {canEdit && !overflowSplit && (
+            <>
+              <Button
+                aria-label="分屏"
+                title="分屏视图"
+                variant={splitOpen ? "subtle" : "ghost"}
+                size="sm"
+                px={isCompact ? 2 : undefined}
+                gap={1.5}
+                flexShrink={0}
+                onClick={toggleSplit}
+              >
+                <Columns2 size={15} />
+                {!isCompact && "分屏"}
+              </Button>
+              {splitOpen && (
+                <Button
+                  aria-label="Diff"
+                  title="在分屏中打开 Diff 对比"
+                  variant={diffOpen ? "subtle" : "ghost"}
+                  size="sm"
+                  px={isCompact ? 2 : undefined}
+                  gap={1.5}
+                  flexShrink={0}
+                  onClick={toggleDiff}
+                >
+                  <GitCompareArrows size={15} />
+                  {!isCompact && "Diff"}
+                </Button>
+              )}
+            </>
+          )}
+
+          {!overflowMargin && (
+            <Box
+              ref={paddingWrapRef}
+              position="relative"
+              display="flex"
+              alignItems="center"
+              flexShrink={0}
+              onPointerEnter={showPaddingPanel}
+              onPointerLeave={handlePaddingLeave}
+            >
+              <Button
+                aria-label={t("shell.margin")}
+                title={t("shell.marginTitle")}
+                variant="ghost"
+                size="sm"
+                px={isCompact ? 2 : undefined}
+                gap={isCompact ? 1 : 1.5}
+                onClick={showPaddingPanel}
+              >
+                <StretchHorizontal size={15} />
+                {!isCompact && t("shell.margin")}
+                <ChevronDown size={12} opacity={0.55} />
+              </Button>
+
+              {/* 悬停展开的边距调节面板:实时改预览左右内边距。
+                  animationFillMode="both" 让退场动画播完后停在末态(opacity 0):
+                  Chakra 的 animationStyle 只给 animationName、不带 fill-mode,
+                  动画结束到定时卸载之间元素会回弹到不透明,肉眼就是"闪一下"。 */}
+              {paddingPhase !== "closed" && (
+                <Box
+                  data-placement="bottom"
+                  animationStyle={paddingPhase === "open" ? "slide-fade-in" : "slide-fade-out"}
+                  animationDuration={paddingPhase === "open" ? "fast" : "faster"}
+                  animationFillMode="both"
+                  position="absolute"
+                  top="100%"
+                  left="50%"
+                  transform="translateX(-50%)"
+                  mt={2}
+                  zIndex={1000}
+                  minW="220px"
+                  bg="bg"
+                  borderWidth="1px"
+                  borderColor="border.subtle"
+                  borderRadius="10px"
+                  boxShadow="md"
+                  p={3}
+                  onPointerEnter={showPaddingPanel}
+                  onPointerLeave={handlePaddingLeave}
+                >
+                  <HStack justify="space-between" mb={2}>
+                    <Text fontSize="xs" color="fg.muted">
+                      {t("shell.contentPadding")}
+                    </Text>
+                    <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
+                      {contentPadding}px
+                    </Text>
+                  </HStack>
+                  <Slider.Root
+                    min={0}
+                    max={MAX_CONTENT_PADDING}
+                    step={4}
+                    size="sm"
+                    value={[contentPadding]}
+                    onValueChange={(e) => setContentPadding(e.value[0])}
+                  >
+                    <Slider.Control>
+                      <Slider.Track>
+                        <Slider.Range />
+                      </Slider.Track>
+                      <Slider.Thumbs />
+                    </Slider.Control>
+                  </Slider.Root>
+                  <HStack gap={1} mt={2}>
+                    {(
+                      [
+                        { v: 0, label: t("shell.paddingNarrow") },
+                        { v: 200, label: t("shell.paddingMedium") },
+                        { v: 400, label: t("shell.paddingWide") },
+                      ] as const
+                    ).map((opt) => (
+                      <Button
+                        key={opt.v}
+                        size="xs"
+                        flex={1}
+                        variant={contentPadding === opt.v ? "subtle" : "ghost"}
+                        onClick={() => setContentPadding(opt.v)}
+                      >
+                        {opt.label}
+                      </Button>
+                    ))}
+                  </HStack>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {!overflowSettings && (
             <Button
-              aria-label={t("shell.margin")}
-              title={t("shell.marginTitle")}
+              aria-label={t("shell.settings")}
+              title={t("shell.settings")}
               variant="ghost"
               size="sm"
+              px={isCompact ? 2 : undefined}
               gap={1.5}
-              onClick={showPaddingPanel}
+              flexShrink={0}
+              onClick={() => setSettingsOpen(true)}
             >
-              <StretchHorizontal size={15} />
-              {t("shell.margin")}
-              <ChevronDown size={12} opacity={0.55} />
+              <Settings size={15} />
+              {!isCompact && t("shell.settings")}
             </Button>
+          )}
 
-            {/* 悬停展开的边距调节面板:实时改预览左右内边距。
-                animationFillMode="both" 让退场动画播完后停在末态(opacity 0):
-                Chakra 的 animationStyle 只给 animationName、不带 fill-mode,
-                动画结束到定时卸载之间元素会回弹到不透明,肉眼就是"闪一下"。 */}
-            {paddingPhase !== "closed" && (
-              <Box
-                data-placement="bottom"
-                animationStyle={paddingPhase === "open" ? "slide-fade-in" : "slide-fade-out"}
-                animationDuration={paddingPhase === "open" ? "fast" : "faster"}
-                animationFillMode="both"
-                position="absolute"
-                top="100%"
-                left="50%"
-                transform="translateX(-50%)"
-                mt={2}
-                zIndex={1000}
-                minW="220px"
-                bg="bg"
-                borderWidth="1px"
-                borderColor="border.subtle"
-                borderRadius="10px"
-                boxShadow="md"
-                p={3}
-                onPointerEnter={showPaddingPanel}
-                onPointerLeave={handlePaddingLeave}
-              >
-                <HStack justify="space-between" mb={2}>
-                  <Text fontSize="xs" color="fg.muted">
-                    {t("shell.contentPadding")}
-                  </Text>
-                  <Text fontSize="xs" color="fg.muted" fontVariantNumeric="tabular-nums">
-                    {contentPadding}px
-                  </Text>
-                </HStack>
-                <Slider.Root
-                  min={0}
-                  max={MAX_CONTENT_PADDING}
-                  step={4}
+          {!overflowTheme && <ThemeToggle />}
+
+          {hasOverflow && (
+            <Menu.Root positioning={{ placement: "bottom-end" }}>
+              <Menu.Trigger asChild>
+                <IconButton
+                  aria-label="More"
+                  title="More"
+                  variant="ghost"
                   size="sm"
-                  value={[contentPadding]}
-                  onValueChange={(e) => setContentPadding(e.value[0])}
+                  flexShrink={0}
                 >
-                  <Slider.Control>
-                    <Slider.Track>
-                      <Slider.Range />
-                    </Slider.Track>
-                    <Slider.Thumbs />
-                  </Slider.Control>
-                </Slider.Root>
-                <HStack gap={1} mt={2}>
-                  {(
-                    [
-                      { v: 0, label: t("shell.paddingNarrow") },
-                      { v: 200, label: t("shell.paddingMedium") },
-                      { v: 400, label: t("shell.paddingWide") },
-                    ] as const
-                  ).map((opt) => (
-                    <Button
-                      key={opt.v}
-                      size="xs"
-                      flex={1}
-                      variant={contentPadding === opt.v ? "subtle" : "ghost"}
-                      onClick={() => setContentPadding(opt.v)}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
-                </HStack>
-              </Box>
-            )}
-          </Box>
-
-          <Button
-            aria-label={t("shell.settings")}
-            title={t("shell.settings")}
-            variant="ghost"
-            size="sm"
-            gap={1.5}
-            onClick={() => setSettingsOpen(true)}
-          >
-            <Settings size={15} />
-            {t("shell.settings")}
-          </Button>
-
-          <ThemeToggle />
+                  <MoreHorizontal size={16} />
+                </IconButton>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner zIndex={1000}>
+                  <Menu.Content
+                    minW="210px"
+                    bg="bg"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    borderRadius="10px"
+                    boxShadow="md"
+                    p={1.5}
+                  >
+                    {canEdit && overflowSave && (
+                      <Menu.Item
+                        value="overflow-save"
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        fontSize="sm"
+                        px={2}
+                        py={1.5}
+                        borderRadius="6px"
+                        cursor="pointer"
+                        disabled={!dirty}
+                        onClick={() => activeTab && void saveTab(activeTab.id)}
+                      >
+                        <Save size={14} />
+                        {t("viewer.toolbar.save")}
+                      </Menu.Item>
+                    )}
+                    {overflowOpen && (
+                      <>
+                        <Menu.Item
+                          value="overflow-open-file"
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          fontSize="sm"
+                          px={2}
+                          py={1.5}
+                          borderRadius="6px"
+                          cursor="pointer"
+                          onClick={() => void handleOpen()}
+                        >
+                          <FileText size={14} />
+                          {t("shell.openFile")}
+                        </Menu.Item>
+                        <Menu.Item
+                          value="overflow-open-folder"
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          fontSize="sm"
+                          px={2}
+                          py={1.5}
+                          borderRadius="6px"
+                          cursor="pointer"
+                          onClick={() => void handleWorkspace()}
+                        >
+                          <FolderTree size={14} />
+                          {t("shell.openFolder")}
+                        </Menu.Item>
+                      </>
+                    )}
+                    {overflowFontSize && (
+                      <Box px={2} py={1.5}>
+                        <HStack justify="space-between">
+                          <Text fontSize="xs" color="fg.muted">
+                            {t("shell.fontSize")}
+                          </Text>
+                          <HStack gap={1}>
+                            <IconButton
+                              aria-label={t("shell.decreaseFontSize")}
+                              size="2xs"
+                              variant="ghost"
+                              onClick={() => setFontSize(fontSize - 1)}
+                            >
+                              <Minus size={12} />
+                            </IconButton>
+                            <Text fontSize="xs" minW="26px" textAlign="center" fontVariantNumeric="tabular-nums">
+                              {fontSize}
+                            </Text>
+                            <IconButton
+                              aria-label={t("shell.increaseFontSize")}
+                              size="2xs"
+                              variant="ghost"
+                              onClick={() => setFontSize(fontSize + 1)}
+                            >
+                              <Plus size={12} />
+                            </IconButton>
+                          </HStack>
+                        </HStack>
+                      </Box>
+                    )}
+                    {overflowMargin && (
+                      <Box px={2} py={1.5}>
+                        <Text fontSize="xs" color="fg.muted" mb={1}>
+                          {t("shell.contentPadding")} ({contentPadding}px)
+                        </Text>
+                        <HStack gap={1}>
+                          {(
+                            [
+                              { v: 0, label: t("shell.paddingNarrow") },
+                              { v: 200, label: t("shell.paddingMedium") },
+                              { v: 400, label: t("shell.paddingWide") },
+                            ] as const
+                          ).map((opt) => (
+                            <Button
+                              key={opt.v}
+                              size="2xs"
+                              flex={1}
+                              variant={contentPadding === opt.v ? "subtle" : "ghost"}
+                              onClick={() => setContentPadding(opt.v)}
+                            >
+                              {opt.label}
+                            </Button>
+                          ))}
+                        </HStack>
+                      </Box>
+                    )}
+                    {canEdit && overflowSplit && (
+                      <>
+                        <Menu.Item
+                          value="overflow-split"
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                          fontSize="sm"
+                          px={2}
+                          py={1.5}
+                          borderRadius="6px"
+                          cursor="pointer"
+                          onClick={toggleSplit}
+                        >
+                          <Columns2 size={14} />
+                          {splitOpen ? "关闭分屏" : "分屏视图"}
+                        </Menu.Item>
+                        {splitOpen && (
+                          <Menu.Item
+                            value="overflow-diff"
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                            fontSize="sm"
+                            px={2}
+                            py={1.5}
+                            borderRadius="6px"
+                            cursor="pointer"
+                            onClick={toggleDiff}
+                          >
+                            <GitCompareArrows size={14} />
+                            {diffOpen ? "关闭 Diff" : "打开 Diff"}
+                          </Menu.Item>
+                        )}
+                      </>
+                    )}
+                    {overflowSettings && (
+                      <Menu.Item
+                        value="overflow-settings"
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        fontSize="sm"
+                        px={2}
+                        py={1.5}
+                        borderRadius="6px"
+                        cursor="pointer"
+                        onClick={() => setSettingsOpen(true)}
+                      >
+                        <Settings size={14} />
+                        {t("shell.settings")}
+                      </Menu.Item>
+                    )}
+                    {overflowTheme && (
+                      <Menu.Item
+                        value="overflow-theme"
+                        display="flex"
+                        alignItems="center"
+                        gap={2}
+                        fontSize="sm"
+                        px={2}
+                        py={1.5}
+                        borderRadius="6px"
+                        cursor="pointer"
+                        onClick={() =>
+                          withViewTransition(() => setTheme(isDark ? "light" : "dark"))
+                        }
+                      >
+                        {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                        {t("shell.toggleTheme")}
+                      </Menu.Item>
+                    )}
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
+          )}
         </HStack>
 
         <Box justifySelf="end" display="flex" alignItems="center" data-tauri-drag-region="">
