@@ -337,7 +337,7 @@ function AboutSection() {
   const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme !== "light";
-  const [version, setVersion] = useState("1.0.4");
+  const [version, setVersion] = useState("1.0.5");
   const { lastCheck, tag: latestTag, check, phase, progress, errorMsg, startDownload, install } =
     useUpdate();
 
